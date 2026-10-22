@@ -6,7 +6,7 @@ namespace GameJam.Movement
     /// <summary>Basic platform movement. Input is supplied separately from the physics tick.</summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Rigidbody2D), typeof(BoxCollider2D))]
-    public sealed class PlayerMovement2D : MonoBehaviour
+    public sealed partial class PlayerMovement2D : MonoBehaviour
     {
         [Header("Provisional movement tuning")]
         [SerializeField, Min(0f)] private float moveSpeed = 6f;
@@ -35,29 +35,46 @@ namespace GameJam.Movement
             bodyCollider = GetComponent<BoxCollider2D>();
         }
 
-        private void OnEnable() => ClearInput();
+        private void OnEnable()
+        {
+            ClearInput();
+            ResetDashState();
+        }
 
         private void OnDisable()
         {
+            StopDash();
+            DashApproval = null;
             ClearInput();
             IsGrounded = false;
             if (body != null)
                 body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
         }
 
-        public void SetHorizontalInput(float value) => horizontalInput = Mathf.Clamp(value, -1f, 1f);
+        public void SetHorizontalInput(float value)
+        {
+            horizontalInput = Mathf.Clamp(value, -1f, 1f);
+            if (Mathf.Abs(horizontalInput) > dashDirectionDeadZone)
+                horizontalFacing = horizontalInput > 0f ? 1f : -1f;
+        }
 
-        public void RequestJump() => jumpRequested = true;
+        public void RequestJump()
+        {
+            if (!IsDashing)
+                jumpRequested = true;
+        }
 
         public void ClearInput()
         {
             horizontalInput = 0f;
             jumpRequested = false;
+            dashRequested = false;
         }
 
         private void FixedUpdate()
         {
-            IsGrounded = CheckGrounded();
+            if (StepDash())
+                return;
             Vector2 velocity = body.linearVelocity;
             velocity.x = horizontalInput * moveSpeed;
 
@@ -105,6 +122,7 @@ namespace GameJam.Movement
             jumpSpeed = Mathf.Max(0f, jumpSpeed);
             groundProbeDistance = Mathf.Max(0.001f, groundProbeDistance);
             groundProbeInset = Mathf.Max(0f, groundProbeInset);
+            ValidateDashSettings();
         }
     }
 }

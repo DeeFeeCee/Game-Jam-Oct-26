@@ -1,0 +1,6 @@
+{
+    "name": "GameJam.CardinalDash.PlayModeTests",
+    "rootNamespace": "GameJam.Movement.Tests",
+    "references": ["GameJam.Movement", "Unity.InputSystem"],
+    "optionalUnityReferences": ["TestAssemblies"]
+}
