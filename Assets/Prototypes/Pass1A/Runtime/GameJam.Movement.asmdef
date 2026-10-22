@@ -1,0 +1,5 @@
+{
+    "name": "GameJam.Movement",
+    "rootNamespace": "GameJam.Movement",
+    "references": ["Unity.InputSystem"]
+}
