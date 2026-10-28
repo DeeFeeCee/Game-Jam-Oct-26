@@ -90,7 +90,8 @@ namespace GameJam.Movement
             jump = null;
             dash = null;
             dashPressed = false;
-            movement.ClearInput();
+            // A resource gate can disable input before this component's Awake on a failed scene load.
+            if (movement != null) movement.ClearInput();
         }
 
         private void OnApplicationFocus(bool hasFocus)

@@ -77,6 +77,10 @@ namespace GameJam.Movement
                     (!dashUsedSinceGrounding || SceneDashSettings.AllowsAirDashChaining());
                 if (eligible)
                 {
+                    // Reject zero-travel attempts before the resource owner can spend a charge.
+                    float firstDistance = dashSpeed * Mathf.Min(Time.fixedDeltaTime, dashDuration);
+                    if (SafeDashDistance(direction, firstDistance, out _) <= 0.00001f)
+                        return false;
                     bool approved = DashApproval == null || DashApproval(direction);
                     // An approval owner may disable this actor immediately (for example later game over).
                     if (!isActiveAndEnabled || !body.simulated)
@@ -101,7 +105,7 @@ namespace GameJam.Movement
             IsGrounded = false;
             float stepSeconds = Mathf.Min(Time.fixedDeltaTime, dashSecondsLeft);
             float requestedDistance = dashSpeed * stepSeconds;
-            float travelDistance = SafeDashDistance(requestedDistance, out bool blocked);
+            float travelDistance = SafeDashDistance(dashDirection, requestedDistance, out bool blocked);
             // A partial final physics tick preserves speed * requested duration as total travel.
             body.linearVelocity = dashDirection * (travelDistance / Time.fixedDeltaTime);
             dashSecondsLeft -= stepSeconds;
@@ -110,7 +114,7 @@ namespace GameJam.Movement
             return true;
         }
 
-        private float SafeDashDistance(float requestedDistance, out bool blocked)
+        private float SafeDashDistance(Vector2 direction, float requestedDistance, out bool blocked)
         {
             Bounds bounds = bodyCollider.bounds;
             Vector2 size = new Vector2(Mathf.Max(0.001f, bounds.size.x - 2f * dashCollisionSkin),
@@ -118,7 +122,7 @@ namespace GameJam.Movement
             ContactFilter2D filter = new ContactFilter2D { useTriggers = false };
             filter.SetLayerMask(Physics2D.GetLayerCollisionMask(gameObject.layer));
             dashHits.Clear();
-            Physics2D.BoxCast(bounds.center, size, 0f, dashDirection, filter, dashHits,
+            Physics2D.BoxCast(bounds.center, size, 0f, direction, filter, dashHits,
                 requestedDistance + dashCollisionSkin);
 
             float distance = requestedDistance;
@@ -127,7 +131,7 @@ namespace GameJam.Movement
             {
                 if (hit.collider.attachedRigidbody == body ||
                     Physics2D.GetIgnoreCollision(bodyCollider, hit.collider) ||
-                    Vector2.Dot(hit.normal, dashDirection) >= -0.01f)
+                    Vector2.Dot(hit.normal, direction) >= -0.01f)
                     continue;
                 float clearance = Mathf.Max(0f, hit.distance - dashCollisionSkin);
                 if (clearance <= distance)

@@ -1,0 +1,5 @@
+{
+    "name": "GameJam.DashResources",
+    "rootNamespace": "GameJam.Resources",
+    "references": ["GameJam.Movement"]
+}
