@@ -26,6 +26,7 @@ namespace GameJam.Movement.Tests
         private InputSettings previousInputSettings;
         private InputSettings testInputSettings;
         private string previousInputSettingsJson;
+        private HideFlags previousInputSettingsFlags;
 
         [SetUp]
         public void SetUp()
@@ -34,6 +35,11 @@ namespace GameJam.Movement.Tests
             // Use a temporary settings copy, never change the project's Input Settings asset.
             previousInputSettings = InputSystem.settings;
             previousInputSettingsJson = JsonUtility.ToJson(previousInputSettings);
+            previousInputSettingsFlags = previousInputSettings.hideFlags;
+            // Input System deletes a replaced object whose flags are exactly HideAndDontSave.
+            // Retain the original Editor object, including through single-scene load tests.
+            if (previousInputSettingsFlags == HideFlags.HideAndDontSave)
+                previousInputSettings.hideFlags |= HideFlags.HideInInspector;
             testInputSettings = Object.Instantiate(previousInputSettings);
             testInputSettings.hideFlags = HideFlags.HideAndDontSave;
             testInputSettings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
@@ -70,6 +76,7 @@ namespace GameJam.Movement.Tests
                 JsonUtility.FromJsonOverwrite(previousInputSettingsJson, previousInputSettings);
             }
             InputSystem.settings = previousInputSettings;
+            previousInputSettings.hideFlags = previousInputSettingsFlags;
             Object.Destroy(testInputSettings);
             yield return null;
             LogAssert.NoUnexpectedReceived();

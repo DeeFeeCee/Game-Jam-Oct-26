@@ -1,0 +1,5 @@
+{
+    "name": "GameJam.DashResources.PrototypeEditor",
+    "references": ["GameJam.DashResources"],
+    "includePlatforms": ["Editor"]
+}

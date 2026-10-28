@@ -26,6 +26,7 @@ namespace GameJam.Movement.Tests
         private InputSettings oldSettings;
         private InputSettings testSettings;
         private string oldSettingsJson;
+        private HideFlags oldSettingsFlags;
         private Scene loadedScene;
         private int activeTicks;
 
@@ -34,6 +35,10 @@ namespace GameJam.Movement.Tests
         {
             oldSettings = InputSystem.settings;
             oldSettingsJson = JsonUtility.ToJson(oldSettings);
+            oldSettingsFlags = oldSettings.hideFlags;
+            // Prevent Input System from deleting the original temporary Editor settings on replacement.
+            if (oldSettingsFlags == HideFlags.HideAndDontSave)
+                oldSettings.hideFlags |= HideFlags.HideInInspector;
             testSettings = Object.Instantiate(oldSettings);
             testSettings.hideFlags = HideFlags.HideAndDontSave;
             testSettings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
@@ -72,6 +77,7 @@ namespace GameJam.Movement.Tests
                 JsonUtility.FromJsonOverwrite(oldSettingsJson, oldSettings);
             }
             InputSystem.settings = oldSettings;
+            oldSettings.hideFlags = oldSettingsFlags;
             Object.Destroy(testSettings);
             yield return null;
             LogAssert.NoUnexpectedReceived();
