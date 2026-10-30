@@ -1,0 +1,1 @@
+{"name":"GameJam.SingleScreen","references":["GameJam.Movement","GameJam.DashResources","GameJam.Presentation","Unity.RenderPipelines.Universal.Runtime","Unity.RenderPipelines.Universal.2D.Runtime"]}

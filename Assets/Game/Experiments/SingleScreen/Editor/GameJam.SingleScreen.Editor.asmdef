@@ -1,0 +1,1 @@
+{"name":"GameJam.SingleScreen.Editor","references":["GameJam.SingleScreen","GameJam.Foundation.Editor","GameJam.Levels","GameJam.Movement","GameJam.DashResources","Unity.RenderPipelines.Universal.Runtime","Unity.RenderPipelines.Universal.2D.Runtime"],"includePlatforms":["Editor"]}
