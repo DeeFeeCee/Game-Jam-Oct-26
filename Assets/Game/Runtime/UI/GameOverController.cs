@@ -56,6 +56,8 @@ namespace GameJam.UI
         }
         private void Show()
         {
+            var pause=Object.FindFirstObjectByType<PauseController>();
+            if(pause!=null)pause.ReleaseForGameOver();
             pending=false;IsVisible=true;PresentationCount++;
             SuspendOtherUI();overlay.SetActive(true);uiEventSystem.gameObject.SetActive(true);
             restartButton.interactable=mainMenuButton.interactable=false;
