@@ -22,6 +22,7 @@ namespace GameJam.Foundation.Tests
     public sealed partial class FoundationTests
     {
         private const string Level = "Assets/Game/Scenes/Levels/Level01.unity";
+        private const string LegacyLevel = "Assets/Game/Tests/Fixtures/Production32x18/LegacyLevel01.unity";
         private const string Destination = "Assets/Game/Scenes/VerificationDestination.unity";
         private const string Player = "Assets/Game/Prefabs/Player.prefab";
         private Scene loaded;
@@ -183,15 +184,15 @@ namespace GameJam.Foundation.Tests
             Assert.Greater(pixels.GetPixels32().Distinct().Count(),10);
             Object.Destroy(pixels); Object.Destroy(texture);
         }
-        [UnityTest] public IEnumerator Level01RouteCanReachExitUsingOneNonfatalDash()
+        [UnityTest] public IEnumerator LegacyScrollingRouteCanReachExitUsingOneNonfatalDash()
         {
-            yield return Load(Level);
+            yield return Load(LegacyLevel);
             var actor=Object.FindFirstObjectByType<PlayerMovement2D>();
             actor.GetComponent<PlayerMovementInput2D>().enabled=false;
             var bank=RunDashBank.Instance;
             bool stepJump=false, barrierJump=false, dashed=false;
             int afterJump=0;
-            for(int tick=0;tick<1000&&SceneManager.GetActiveScene().path==Level;tick++)
+            for(int tick=0;tick<1000&&SceneManager.GetActiveScene().path==LegacyLevel;tick++)
             {
                 if(actor != null && actor.enabled)
                 {

@@ -1,0 +1,14 @@
+{
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "references": [
+    "GameJam.LevelAuthoring.Editor",
+    "GameJam.Levels",
+    "GameJam.DashResources"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "name": "GameJam.LevelAuthoring.EditModeTests"
+}
