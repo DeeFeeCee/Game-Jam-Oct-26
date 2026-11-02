@@ -12,12 +12,14 @@ namespace GameJam.Resources
         [SerializeField, Min(1)] private int startingDashCount = 5;
         [SerializeField, HideInInspector] private int remainingCharges;
         [SerializeField, HideInInspector] private bool isGameOver;
+        [SerializeField, HideInInspector] private RunFailureCause failureCause;
         private bool notifying;
 
         public static RunDashBank Instance { get; private set; }
         public int StartingDashCount => startingDashCount;
         public int RemainingCharges => remainingCharges;
         public bool IsGameOver => isGameOver;
+        public RunFailureCause FailureCause => failureCause;
 
         public event Action<int> ChargesChanged;
         public event Action GameOver;
@@ -53,6 +55,7 @@ namespace GameJam.Resources
                 return;
             remainingCharges = Mathf.Max(1, startingDashCount);
             isGameOver = false;
+            failureCause = RunFailureCause.None;
             notifying = true;
             try
             {
@@ -69,6 +72,7 @@ namespace GameJam.Resources
                 return false;
             remainingCharges--;
             isGameOver = remainingCharges == 0;
+            if (isGameOver) failureCause = RunFailureCause.MobilityExhaustion;
             notifying = true; // Event listeners cannot recursively spend/reset this transaction.
             try
             {
@@ -79,6 +83,18 @@ namespace GameJam.Resources
             }
             finally { notifying = false; }
             return !isGameOver;
+        }
+
+        /// <summary>Fail the authoritative run without changing or impersonating a charge transaction.</summary>
+        public bool TryFailEnvironment()
+        {
+            if (Instance != this || !isActiveAndEnabled || isGameOver || notifying) return false;
+            isGameOver = true;
+            failureCause = RunFailureCause.Environmental;
+            notifying = true;
+            try { GameOver?.Invoke(); }
+            finally { notifying = false; }
+            return true;
         }
 
         private void OnDestroy()

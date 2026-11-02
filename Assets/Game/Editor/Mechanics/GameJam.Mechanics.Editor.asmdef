@@ -1,0 +1,1 @@
+{"name":"GameJam.Mechanics.Editor","references":["GameJam.Mechanics","GameJam.Movement","GameJam.DashResources","GameJam.Levels","Unity.RenderPipelines.Universal.Runtime","Unity.RenderPipelines.Universal.2D.Runtime"],"includePlatforms":["Editor"]}

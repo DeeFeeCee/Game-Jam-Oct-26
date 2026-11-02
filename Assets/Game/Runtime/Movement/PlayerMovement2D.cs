@@ -39,6 +39,7 @@ namespace GameJam.Movement
         {
             ClearInput();
             ResetDashState();
+            ClearSupport();
         }
 
         private void OnDisable()
@@ -47,6 +48,7 @@ namespace GameJam.Movement
             DashApproval = null;
             ClearInput();
             IsGrounded = false;
+            ClearSupport();
             if (body != null)
                 body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
         }
@@ -82,7 +84,9 @@ namespace GameJam.Movement
             {
                 velocity.y = jumpSpeed;
                 IsGrounded = false;
+                ClearSupport(); // Jump/dash departure does not inherit platform momentum.
             }
+            else ApplySupport(ref velocity);
 
             // Consume every press once. An airborne press is not saved for landing.
             jumpRequested = false;
@@ -91,9 +95,8 @@ namespace GameJam.Movement
 
         private bool CheckGrounded()
         {
-            // While rising, proximity to the floor must not grant a second jump.
-            if (body.linearVelocity.y > 0.05f || !bodyCollider.enabled)
-                return false;
+            departedSupportVelocity = Vector2.zero;
+            if (!bodyCollider.enabled) { DropSupport(); return false; }
 
             Bounds bounds = bodyCollider.bounds;
             const float probeHeight = 0.02f;
@@ -110,9 +113,10 @@ namespace GameJam.Movement
             {
                 if (hit.collider.attachedRigidbody == body)
                     continue;
-                if (hit.normal.y >= minimumNormalY)
+                if (hit.normal.y >= minimumNormalY && AcceptGroundSupport(hit))
                     return true;
             }
+            DropSupport();
             return false;
         }
 

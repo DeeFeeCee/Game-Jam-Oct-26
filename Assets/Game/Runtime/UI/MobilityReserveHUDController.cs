@@ -23,6 +23,7 @@ namespace GameJam.UI
         public Color unavailableColor = new Color(.62f, .69f, .72f);
         public string criticalWarning = "NEXT DASH WILL TERMINATE RUN";
         public string exhaustedMessage = "ALLOCATION EXHAUSTED";
+        public string environmentalFailureMessage = "SUBJECT INTEGRITY LOST";
         public string unavailableMessage = "MONITOR OFFLINE";
         public string unavailableCounter = "--";
         [Min(1)] public int maximumColumns = 12;
@@ -57,7 +58,13 @@ namespace GameJam.UI
         {
             var current = RunDashBank.Instance;
             if (current != null && !current.isActiveAndEnabled) current = null;
-            if (ReferenceEquals(current, bank) && rendered) return;
+            if (ReferenceEquals(current, bank) && rendered)
+            {
+                // Environmental failure changes state without a ChargesChanged notification.
+                // Keep the HUD read-only and preserve its existing two event subscriptions.
+                if (bank != null && bank.IsGameOver != displayedFailure) Render(false);
+                return;
+            }
             Unsubscribe();
             bank = current;
             if (bank != null)
@@ -84,7 +91,9 @@ namespace GameJam.UI
             if (force) RefreshSegmentLayout();
             counter.text = bank != null ? remaining.ToString("D2") : unavailableCounter;
             counter.color = remaining == 1 ? criticalColor : (bank != null ? counterColor : unavailableColor);
-            warning.text = bank == null ? unavailableMessage : (remaining == 1 ? criticalWarning : (remaining == 0 ? exhaustedMessage : ""));
+            warning.text = bank == null ? unavailableMessage :
+                (failed && bank.FailureCause == RunFailureCause.Environmental ? environmentalFailureMessage :
+                (remaining == 1 ? criticalWarning : (remaining == 0 ? exhaustedMessage : "")));
             warning.color = remaining == 1 || remaining == 0 ? criticalColor : unavailableColor;
             for (int i = 0; i < segments.Count; i++)
             {
