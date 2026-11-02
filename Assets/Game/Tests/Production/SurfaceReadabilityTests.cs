@@ -29,7 +29,7 @@ namespace GameJam.Foundation.Tests
         }
         [UnityTest] public IEnumerator AllIntendedLevelSolidsHaveAlignedForegroundEdges()
         {
-            yield return Load(Level);
+            yield return Load(LegacyLevel);
             var solids=loaded.GetRootGameObjects().SelectMany(r=>r.GetComponentsInChildren<BoxCollider2D>())
                 .Where(c=>!c.isTrigger&&c.attachedRigidbody==null).ToArray();
             Assert.AreEqual(5,solids.Length); foreach(var solid in solids) CheckSurface(solid);
@@ -50,7 +50,7 @@ namespace GameJam.Foundation.Tests
         }
         [UnityTest] public IEnumerator IndustrialBackgroundRemainsSeparateFromGameplayTrim()
         {
-            yield return Load(Level);
+            yield return Load(LegacyLevel);
             var background=loaded.GetRootGameObjects().Single(g=>g.name=="Blue industrial background");
             var renderer=background.GetComponent<SpriteRenderer>();
             Assert.AreEqual("BlueBG",renderer.sprite.name); Assert.AreEqual(-20,renderer.sortingOrder);

@@ -297,7 +297,10 @@ namespace GameJam.Movement.Tests
             gamepad = InputSystem.AddDevice<Gamepad>();
             InputSystem.QueueStateEvent(gamepad,
                 new GamepadState { leftStick = new Vector2(-0.3f, 0.9f) }.WithButton(GamepadButton.RightShoulder));
-            yield return new WaitForSeconds(0.06f);
+            // Device creation can stall a frame longer than a short wall-clock wait.
+            // Let input Update submit its request, then observe the following physics tick.
+            yield return null;
+            yield return new WaitForFixedUpdate();
             Assert.That(movement.IsDashing, Is.True);
             Assert.That(movement.DashDirection, Is.EqualTo(Vector2.up));
         }

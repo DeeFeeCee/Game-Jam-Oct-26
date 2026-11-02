@@ -1,0 +1,14 @@
+{
+  "references": [
+    "GameJam.Levels",
+    "GameJam.Movement",
+    "GameJam.DashResources",
+    "GameJam.Foundation.Editor",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Universal.2D.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "name": "GameJam.LevelAuthoring.Editor"
+}
