@@ -1,18 +1,75 @@
 # Pass 1G — Production 32×18 integration review
 
-Target: **PASS-1G-32X18-INTEGRATION-CANDIDATE**. Developer acceptance is pending.
-Implementation and validation only; no commit, push, PR or merge is authorized.
+Developer decision: **PASS-1G-32X18-INTEGRATION-ACCEPTED** — Devin Padin.
+Developer manual acceptance: **10/10 checks passed**. Publication is authorized;
+the pull request must remain open for DeeFeeCee's review and merge decision.
 
-## Baseline and scope
+## Original implementation baseline and scope
 
 - Worktree: `Production32x18`; branch: `feature/32x18-production-integration`.
 - Exact starting SHA: `038ec69d35ab5c7dc42c716cef989ab6cddac28a` from fetched origin/main.
 - Main includes the accepted production foundation, PR #6 experiment and Main Menu,
   Game Over, Pause and Mobility Reserve HUD dependency chain.
-- PR #11 was merged into its menu parent branch but is not in this mainline.
-  No Credits content was imported or changed.
+- At original implementation time, PR #11 was merged into its menu parent branch
+  but was not in main. Credits was integrated later through main as recorded below.
 - No new committed teammate level work was found during preflight. Other branches,
   worktrees and unrelated local changes are preserved.
+
+## Accepted publication integration
+
+The exact accepted 47-path candidate (43 additions, four modifications) was committed
+as `0cbabca8fa63acd5bc27c2d99f83b86095c818ae` using
+`feat: integrate official 32x18 production level framework`.
+Main had advanced through the Credits merge to
+`1daf7b6975b16136f79725fe4474920dbb0912a8`. Its 16 Credits paths did not overlap
+the candidate. A normal merge preserved both histories without conflicts or rebase:
+`13f756e837fe056305dc1cd990a1e0acea9a1ca9`.
+
+The integration leaves all candidate gameplay/code/assets/metadata unchanged and
+preserves main's Credits implementation, menu prefab and menu tests. Only this
+review record and the production guide receive publication documentation updates.
+The PR comparison against integrated main remains exactly the original 47 paths.
+No hazards, Pass 1H work, additional levels or new gameplay features are included.
+
+### Post-integration verification
+
+All evidence below is under ignored `Logs/Production32x18/Publication/`.
+
+| Verification | Actual result | Evidence |
+|---|---|---|
+| Complete PlayMode run 1 | 274 passed / 0 failed / 0 skipped | `PlayMode-1.xml` |
+| Complete PlayMode run 2 | 274 passed / 0 failed / 0 skipped | `PlayMode-2.xml` |
+| Complete Editor run 1 | 14 passed / 0 failed / 0 skipped | `EditMode-1.xml` |
+| Complete Editor run 2 | 14 passed / 0 failed / 0 skipped | `EditMode-2.xml` |
+| Final Windows development build | Succeeded, zero build errors | `build-final.log`, `build-final-summary.txt` |
+| Combined Credits-to-gameplay standalone smoke | Passed, exit code 0 | `combined-smoke-exit.txt`, `CombinedSmoke/checks.txt` |
+| Final executable standalone check | Passed, exit code 0 | `final-build-smoke-exit.txt`, `FinalBuildSmoke/checks.txt` |
+| Developer manual acceptance | 10/10 passed | Devin's publication authorization |
+
+The discovered 274 PlayMode tests retain all 253 Pass 1G cases and add main's 21
+Credits cases. Both full Editor runs discover 14 authoring cases. No tests failed
+or were skipped after integration. The first launch could not start because the
+developer's Editor held this project open; no test was discovered or executed.
+The developer saved and closed that Editor, and the suites then ran successfully.
+That launch log remains as `Editor-open-launch.log`; it is not a regression result.
+
+The combined standalone smoke used real keyboard navigation to open/scroll Credits,
+return with restored focus, select New Game and load production Level01. It then
+exercised the actual physical route/exit, persistent bank, Pause/Resume, HUD, fatal
+zero-travel dash, Game Over and Restart in one process. Credits browsing did not
+create or spend a bank. Actual room visibility remained correct at 1280×720,
+1920×1080, 2560×1440 and 1366×900.
+
+A temporary opt-in checker copied the existing development checker and added the
+Credits visit. It never modified accepted source files and was removed with its
+metadata after the smoke test. The final executable was rebuilt without it.
+Gameplay, UI, resource, level, presentation and experimental assembly hashes match
+the combined smoke build; only the verification assembly differs. The accepted
+checker then passed again on the final executable. No temporary source, build,
+log, capture or generated setting is included in the PR.
+
+The exact file list remains below; local final hashes and preservation checks are
+recorded in `final-file-inventory.csv` and `final-preservation-audit.json`.
 
 ## Implementation
 
@@ -105,7 +162,7 @@ sizes/screenshots and Rigidbody2D route positions, then checks transitions, char
 Pause, HUD, final-charge failure, Restart and return to menu. It has no ordinary-play
 behavior. Automated virtual keyboard/API checks are not developer manual acceptance.
 
-## Final executed results
+## Original accepted candidate verification
 
 | Verification | Result | Local evidence under `Logs/Production32x18/` |
 |---|---|---|
@@ -120,8 +177,8 @@ All 237 mainline PlayMode cases are retained (the old scrolling route was rename
 to describe its fixture), plus 16 new PlayMode cases. The 14 Editor cases are new.
 Earlier complete passing PlayMode runs 1/2 are also retained; runs 3/4 compile the
 final standalone-helper source. Domain reload remains disabled in the unchanged
-EditorSettings. These are separate batch Editor processes; same-Editor repeated
-Play and physical-device feel still require the developer checklist below.
+EditorSettings. These were separate batch Editor processes. Devin subsequently
+accepted the implementation after 10/10 personal manual checks.
 
 The first standalone attempt captured all four outputs but failed its pause-position
 check. The helper sampled during a fixed-step continuation; sampling after a completed
@@ -159,7 +216,7 @@ its exact preflight bytes, with generated versions backed up under ignored
 `Logs/Production32x18/Incidental/`. Transient performance-test Resources JSON files
 were generated/removed by Unity's build pipeline and are not publication content.
 No build, screenshot, log, cache, IDE file or SceneTemplateSettings is intended for
-publication. Developer gameplay acceptance remains pending.
+publication. Developer gameplay acceptance has since been granted as recorded above.
 
 Unity's actual Scene view saved `Logs/Production32x18/editor-grid.png` and the
 loaded hierarchy was exported to `editor-hierarchy.txt`. The Windows full-window
@@ -191,11 +248,14 @@ Editor was closed after capture; other worktrees/Editors were not touched.
   guide. Likely normalized Move input is not corrected here. The earlier stutter
   investigation remains inconclusive; this pass does not claim to resolve it.
 - No turrets, breakable walls, kill-plane deaths, hidden rooms, new hazards or additional
-  finished levels are implemented. Credits/mainline integration remains separate.
+  finished levels are implemented. Mainline Credits is now integrated and preserved.
 - Generated IDE files, SceneTemplateSettings, logs, screenshots, builds and caches
-  are excluded from the intended publication inventory. Staging must remain empty.
+  are excluded from the intended publication inventory. Staging is cleared after publication.
 
-## Developer manual acceptance checklist
+## Reusable manual review checklist
+
+Devin's accepted manual result is 10/10 checks. The original twelve-item guide below
+is retained for future level-authoring reviews; it is not an outstanding acceptance gate.
 
 1. Open this worktree in Unity 6000.3.26f1; confirm no compilation/Console errors.
 2. Start MainMenu and New Game; verify it loads current Level01 with one player,
@@ -216,7 +276,7 @@ Editor was closed after capture; other worktrees/Editors were not touched.
     without changing MainMenu's first position. Confirm Level01 overwrite is refused.
 
 See `32x18LevelProductionGuide.md` for the concise designer workflow. Developer
-acceptance and publication remain separate gates.
+acceptance and publication authorization are granted; maintainer review/merge remains required.
 
 ## Complete intended file inventory
 

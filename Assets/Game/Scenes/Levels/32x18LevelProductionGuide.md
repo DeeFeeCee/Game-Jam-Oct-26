@@ -122,4 +122,5 @@ Worm reported horizontal slowdown when holding A/D and pressing W/Up to jump.
 Normalized diagonal Move input is a likely cause. This needs a separate movement
 correction and regression review; Pass 1G leaves the input asset and movement code
 unchanged. Turrets, breakable walls, kill-plane deaths and new hazard systems are
-also outside this pass. Credits integration remains separate from this mainline.
+also outside this pass. Mainline Credits is integrated and preserved in the
+publication branch; include Credits and New Game in integration playtests.
