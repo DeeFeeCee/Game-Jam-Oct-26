@@ -141,7 +141,7 @@ namespace GameJam.UI.Tests
             Assert.IsTrue(view.ControlsOpen);
         }
         [UnityTest] public IEnumerator NavigatingToQuitDoesNotActivateIt()
-        {yield return Press(Key.DownArrow);yield return Press(Key.DownArrow);Assert.AreSame(view.quitButton.gameObject,EventSystem.current.currentSelectedGameObject);Assert.IsFalse(view.QuitRequested);yield return Press(Key.DownArrow);Assert.IsFalse(view.QuitRequested);}
+        {yield return Press(Key.DownArrow);yield return Press(Key.DownArrow);yield return Press(Key.DownArrow);Assert.AreSame(view.quitButton.gameObject,EventSystem.current.currentSelectedGameObject);Assert.IsFalse(view.QuitRequested);yield return Press(Key.DownArrow);Assert.IsFalse(view.QuitRequested);}
         [UnityTest] public IEnumerator QuitButtonIsSafeInEditor()
         {view.quitButton.onClick.Invoke();Assert.IsTrue(view.QuitRequested);yield return null;Assert.IsTrue(Application.isPlaying);Assert.IsFalse(view.launcher.IsLoading);}
         [UnityTest] public IEnumerator MenuEnablesOnlyPrivateUIActions()
