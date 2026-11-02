@@ -1,0 +1,1 @@
+{"name":"GameJam.Credits.PlayModeTests","references":["GameJam.UI","GameJam.UI.Editor","GameJam.DashResources","UnityEngine.UI","Unity.InputSystem","Unity.TextMeshPro"],"optionalUnityReferences":["TestAssemblies"]}
