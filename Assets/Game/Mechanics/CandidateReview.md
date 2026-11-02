@@ -1,5 +1,8 @@
 # Pass 1I — Unified Gameplay Foundation candidate
 
+This report preserves the original candidate verification below. See the publication verification
+addendum at the end for developer acceptance and results after integrating Pass 1G.
+
 Designation: `PASS-1I-UNIFIED-GAMEPLAY-CANDIDATE`. Implementation/local verification only;
 developer manual acceptance and publication are separate. No commit, push, PR, merge, campaign
 level, final art assignment, or deferred mechanic is part of this candidate.
@@ -178,3 +181,39 @@ is empty. Branch HEAD remains the starting SHA; no commit, push, PR, or merge oc
 Gameplay implementation is complete for developer inspection; final balance, chosen level usage,
 art assignments/polish, manual physical-controller acceptance, and future combined PR #14 integration
 remain separate decisions. Stop here pending developer acceptance/publication authorization.
+
+## Publication verification after Pass 1G integration
+
+Devin Padin granted `PASS-1I-UNIFIED-GAMEPLAY-ACCEPTED` after **10/10 developer manual checks**.
+The original results above remain the acceptance record. Commit
+`2316b232f7c11e3e7696d40253af86afe3fd71c2` captured the exact 94 accepted paths. The feature
+branch then merged main `2b1781b12686b5e5baf30897a7094669b03a7fd5` (PR #14) without conflicts.
+The merge preserved Pass 1G’s production rooms, legacy fixture, templates, authoring tools and tests.
+Pass 1I’s runtime, scene, prefab, test and metadata bytes remain as accepted. Only this report and
+the authoring guide were updated for the handoff.
+
+| Integrated verification | Result |
+|---|---|
+| Complete PlayMode run 1 | 328/328, zero failures or skips |
+| Complete PlayMode run 2 | 328/328, zero failures or skips |
+| Complete Editor run 1 | 23/23, zero failures or skips |
+| Complete Editor run 2 | 23/23, zero failures or skips |
+| Fresh Windows development build | Succeeded, zero errors and warnings |
+| Mechanics standalone | Passed, exit code 0 |
+| Official production-room standalone | Passed, exit code 0 |
+
+The integrated suites include all 54 Pass 1I PlayMode cases, 16 Pass 1G production-room cases,
+21 Credits cases, and 14 Pass 1G Editor cases. Pass 1G’s renamed legacy route case and the new
+official Level01 route both pass. The production executable check confirmed Main Menu → New Game,
+one player and bank, the stationary 32×18 camera at four output sizes, the physical exit route,
+HUD accuracy, mid-dash Pause/Resume, zero-travel final-charge failure, Restart and menu return.
+The mechanics check confirmed equal D and W+D travel, bank-preserving environmental failure,
+platform riding and departure, turret hits, wall destruction, and safe/lethal crusher surfaces.
+The standalone runs used real physics and scripted inputs; they add no physical hardware claim.
+
+The PR comparison still comprises **94 paths: 87 additions, seven modifications, no deletions**.
+It excludes production scenes, shared input data, existing player/bank prefabs, credits and artwork.
+The GUID/reference audit found no missing metadata, duplicate asset GUIDs or unresolved candidate
+scene/prefab references. The three excluded local files were preserved byte-for-byte after testing.
+Raw reports, standalone traces and captures, and the preservation audit are retained under ignored
+`Logs/UnifiedGameplay/Publication/`.

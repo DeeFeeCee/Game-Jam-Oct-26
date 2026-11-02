@@ -1,6 +1,6 @@
 # P.I.D.R. Gameplay Mechanics Authoring Guide
 
-Pass 1I candidate. These mechanics are selectable tools, not a requirement for every level.
+Pass 1I. These mechanics are selectable tools, not a requirement for every level.
 No final art, campaign layout, ten/fifteen-level count, checkpoint policy, or new resource allocation is established here.
 
 ## Start with the verification room
@@ -16,9 +16,10 @@ enter this room for manual play. This supplies the explicit `-mechanics-room` te
 `PIDR.exe` still opens the accepted Main Menu. Restart retains its canonical Level01 destination,
 so relaunch the verification shortcut to return to the mechanics room after a failure/restart.
 
-The current main baseline still has the earlier scrolling Level01. Pass 1G PR #14 was unmerged
-at preflight; this pass neither imports nor replaces its production framework. Apply these prefabs
-to the eventual approved production room only after team review.
+The integrated branch includes the official 32×18 production framework from Pass 1G (PR #14).
+Use the existing level-authoring tools for production scenes, then drag the desired prefab from
+`Assets/Game/Prefabs/` into a team-approved room. Pass 1I places its examples only in the isolated
+verification room; it does not add mechanics to Level01 or change any production layout.
 
 Controls remain A/D or Left/Right to walk, W/Up to jump, Space to dash, Escape to pause;
 gamepad left stick to move/aim, South to jump, Right Shoulder to dash, Start to pause.
