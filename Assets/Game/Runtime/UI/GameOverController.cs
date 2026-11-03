@@ -17,6 +17,9 @@ namespace GameJam.UI
         public MenuInputScope inputScope;
         public UnityEngine.UI.Button restartButton,mainMenuButton;
         public TMP_Text status;
+        public TMP_Text failureReason;
+        public string mobilityFailureReason = "MOBILITY ALLOCATION EXHAUSTED";
+        public string environmentalFailureReason = "SUBJECT INTEGRITY LOST";
         [Header("Editable interface messages")]
         public string releasePrompt="Release controls to continue.";
         public string loadingPrompt="Loading...";
@@ -59,6 +62,9 @@ namespace GameJam.UI
             var pause=Object.FindFirstObjectByType<PauseController>();
             if(pause!=null)pause.ReleaseForGameOver();
             pending=false;IsVisible=true;PresentationCount++;
+            // Optional Inspector reference; preserve the accepted prefab and all its object IDs.
+            if(failureReason==null)failureReason=overlay.transform.Find("FailurePanel/Reason")?.GetComponent<TMP_Text>();
+            if(failureReason!=null)failureReason.text=bank.FailureCause==RunFailureCause.Environmental?environmentalFailureReason:mobilityFailureReason;
             SuspendOtherUI();overlay.SetActive(true);uiEventSystem.gameObject.SetActive(true);
             restartButton.interactable=mainMenuButton.interactable=false;
             status.text=releasePrompt;FocusRestart();

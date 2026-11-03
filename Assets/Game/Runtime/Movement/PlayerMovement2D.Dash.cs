@@ -79,7 +79,7 @@ namespace GameJam.Movement
                 {
                     // Reject zero-travel attempts before the resource owner can spend a charge.
                     float firstDistance = dashSpeed * Mathf.Min(Time.fixedDeltaTime, dashDuration);
-                    if (SafeDashDistance(direction, firstDistance, out _) <= 0.00001f)
+                    if (SafeDashDistance(direction, firstDistance, false, out _, out bool reactive) <= 0.00001f && !reactive)
                         return false;
                     bool approved = DashApproval == null || DashApproval(direction);
                     // An approval owner may disable this actor immediately (for example later game over).
@@ -94,6 +94,7 @@ namespace GameJam.Movement
                         finishDashNextTick = false;
                         IsDashing = true;
                         dashUsedSinceGrounding = true;
+                        ClearSupport();
                     }
                 }
             }
@@ -105,7 +106,7 @@ namespace GameJam.Movement
             IsGrounded = false;
             float stepSeconds = Mathf.Min(Time.fixedDeltaTime, dashSecondsLeft);
             float requestedDistance = dashSpeed * stepSeconds;
-            float travelDistance = SafeDashDistance(dashDirection, requestedDistance, out bool blocked);
+            float travelDistance = SafeDashDistance(dashDirection, requestedDistance, true, out bool blocked, out _);
             // A partial final physics tick preserves speed * requested duration as total travel.
             body.linearVelocity = dashDirection * (travelDistance / Time.fixedDeltaTime);
             dashSecondsLeft -= stepSeconds;
@@ -114,7 +115,8 @@ namespace GameJam.Movement
             return true;
         }
 
-        private float SafeDashDistance(Vector2 direction, float requestedDistance, out bool blocked)
+        private float SafeDashDistance(Vector2 direction, float requestedDistance, bool react,
+            out bool blocked, out bool reactive)
         {
             Bounds bounds = bodyCollider.bounds;
             Vector2 size = new Vector2(Mathf.Max(0.001f, bounds.size.x - 2f * dashCollisionSkin),
@@ -127,21 +129,40 @@ namespace GameJam.Movement
 
             float distance = requestedDistance;
             blocked = false;
+            reactive = false;
+            dashHits.Sort((a, b) => a.distance.CompareTo(b.distance));
             foreach (RaycastHit2D hit in dashHits)
             {
-                if (hit.collider.attachedRigidbody == body ||
-                    Physics2D.GetIgnoreCollision(bodyCollider, hit.collider) ||
-                    Vector2.Dot(hit.normal, direction) >= -0.01f)
+                if (!BlocksDash(hit, direction))
                     continue;
                 float clearance = Mathf.Max(0f, hit.distance - dashCollisionSkin);
                 if (clearance <= distance)
                 {
+                    var surface = hit.collider.GetComponent<IDashImpactSurface2D>();
+                    bool canReact = surface != null && surface.CanReactToDash(this, direction);
+                    // Ordinary geometry at the same distance wins; never break through an opaque overlap.
+                    if (canReact)
+                        foreach (var other in dashHits)
+                            if (other.collider != hit.collider && BlocksDash(other, direction) &&
+                                other.distance <= hit.distance + .00001f &&
+                                other.collider.GetComponent<IDashImpactSurface2D>() == null)
+                            { canReact = false; break; }
+                    if (canReact && react && surface.TryReactToApprovedDash(this, direction))
+                        continue; // The same sweep still checks every solid behind the removed wall.
+                    reactive = canReact;
                     distance = clearance;
                     blocked = true;
+                    break;
                 }
             }
             return distance;
         }
+
+        private bool BlocksDash(RaycastHit2D hit, Vector2 direction) =>
+            hit.collider != null && hit.collider.enabled &&
+            hit.collider.attachedRigidbody != body &&
+            !Physics2D.GetIgnoreCollision(bodyCollider, hit.collider) &&
+            Vector2.Dot(hit.normal, direction) < -0.01f;
 
         private void OnCollisionEnter2D(Collision2D collision) => CheckDashContact(collision);
         private void OnCollisionStay2D(Collision2D collision) => CheckDashContact(collision);

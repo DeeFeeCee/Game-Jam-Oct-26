@@ -38,6 +38,7 @@ namespace GameJam.Movement
             // Each player owns its enabled actions; the shared project asset stays untouched.
             runtimeActions = Instantiate(inputActions);
             move = runtimeActions.FindAction("Player/Move", true);
+            ConfigureKeyboardMovement();
             jump = runtimeActions.FindAction("Player/Jump", true);
             // Remap keyboard only on this private copy. Preserve gamepad/XR bindings.
             for (int i = jump.bindings.Count - 1; i >= 0; i--)
@@ -85,6 +86,25 @@ namespace GameJam.Movement
         }
 
         private void OnJump(InputAction.CallbackContext context) { Activity?.Invoke(); jumpPressed = true; }
+
+        private void ConfigureKeyboardMovement()
+        {
+            for (int i = 0; i < move.bindings.Count; i++)
+            {
+                if (!move.bindings[i].isComposite) continue;
+                bool keyboardOnly = false;
+                int part = i + 1;
+                for (; part < move.bindings.Count && move.bindings[part].isPartOfComposite; part++)
+                {
+                    if (!move.bindings[part].path.StartsWith("<Keyboard>/")) { keyboardOnly = false; break; }
+                    keyboardOnly = true;
+                }
+                // Digital mode preserves each keyboard axis at +/-1. Analog stick bindings
+                // and the shared asset stay unchanged; cardinal dash arbitration still owns aim.
+                if (keyboardOnly && (move.bindings[i].path == "Dpad" || move.bindings[i].path.StartsWith("2DVector")))
+                    move.ChangeBinding(i).WithPath("2DVector(mode=1)");
+            }
+        }
         private void OnDash(InputAction.CallbackContext context)
         {
             Activity?.Invoke();
