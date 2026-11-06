@@ -49,9 +49,9 @@ MonoBehaviour:
   projectilePrefab: {fileID: 9028449274336258565, guid: b0faef1397c01124f84cb09b8adb590b, type: 3}
   muzzle: {fileID: 5983512615172756785}
   firingDirection: {x: -1, y: 0}
-  shotInterval: 1.5
+  shotInterval: 0.5
   initialDelay: 0.5
-  projectileSpeed: 6
+  projectileSpeed: 5
   automaticActivation: 1
 --- !u!1 &2182020541201777609
 GameObject:
