@@ -816,7 +816,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cca2953cedf2d740a517f6dd4c4daab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GameJam.Levels::GameJam.Levels.LevelTransition
-  destinationScene: Assets/Game/Scenes/VerificationDestination.unity
+  destinationScene: Assets/Game/Scenes/Levels/Level02.unity
 --- !u!114 &1513227661
 MonoBehaviour:
   m_ObjectHideFlags: 0

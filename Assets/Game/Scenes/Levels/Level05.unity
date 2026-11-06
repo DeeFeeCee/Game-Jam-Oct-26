@@ -325,7 +325,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cca2953cedf2d740a517f6dd4c4daab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GameJam.Levels::GameJam.Levels.LevelTransition
-  destinationScene: 
+  destinationScene: Assets/Game/Scenes/Levels/Level06.unity
 --- !u!114 &329132608
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1680,8 +1680,8 @@ Camera:
   m_LensShift: {x: 0, y: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
-    x: 0.2308984
-    y: 0.2055465
+    x: 0.38958856
+    y: -0.039151713
     width: 0.5373635
     height: 0.5872757
   near clip plane: 0.3
