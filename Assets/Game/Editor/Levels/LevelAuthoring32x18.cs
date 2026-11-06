@@ -131,6 +131,7 @@ namespace GameJam.LevelAuthoring.Editor
             art.transform.localPosition = Vector3.zero;
             art.size = cells;
             SurfaceReadability.Apply(box);
+            BluePlatformAuthoring.Fit(obj);
             foreach (var component in obj.GetComponentsInChildren<Component>())
                 if (component is Transform || component is SpriteRenderer || component is BoxCollider2D)
                 {

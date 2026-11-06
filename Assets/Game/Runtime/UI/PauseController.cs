@@ -99,6 +99,7 @@ namespace GameJam.UI
         }
         public bool TryPause()
         {
+            if (ResearchTerminal.BlocksPause) return false;
             if (IsPaused || IsNavigating || FailureHasPriority() || WaitingForGameplayRelease || !hasFocus) return false;
             var bank = RunDashBank.Instance;
             if (bank == null || !bank.isActiveAndEnabled) return false;

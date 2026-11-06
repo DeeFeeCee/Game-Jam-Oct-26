@@ -1,0 +1,1 @@
+{"name":"GameJam.BlueIntegration.EditorTests","references":["GameJam.UI","GameJam.BlueIntegration.Editor","GameJam.LevelAuthoring.Editor","GameJam.Levels","Unity.TextMeshPro"],"includePlatforms":["Editor"],"optionalUnityReferences":["TestAssemblies"]}

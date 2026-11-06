@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
 
 namespace GameJam.Movement
 {
@@ -18,6 +19,7 @@ namespace GameJam.Movement
         private bool dashPressed;
         private bool dashAttempted;
         private bool jumpPressed;
+        private bool jumpNeedsRelease;
         public event System.Action Activity;
 
         private void Awake() => movement = GetComponent<PlayerMovement2D>();
@@ -62,12 +64,21 @@ namespace GameJam.Movement
                 dash.Enable();
             }
             jump.performed += OnJump;
+            // Move checks held controls on enable. W and Up share its bindings with Jump,
+            // so that initial notification can also look like a new jump on scene entry.
+            jumpNeedsRelease = HasHeldJumpControl();
             move.Enable();
-            jump.Enable();
+            if (!jumpNeedsRelease) jump.Enable();
         }
 
         private void Update()
         {
+            if (jumpNeedsRelease && !HasHeldJumpControl())
+            {
+                jumpNeedsRelease = false;
+                jump.Enable();
+            }
+
             Vector2 direction = move.ReadValue<Vector2>();
             movement.SetHorizontalInput(direction.x);
             if (direction.sqrMagnitude > 0.04f) Activity?.Invoke();
@@ -86,6 +97,14 @@ namespace GameJam.Movement
         }
 
         private void OnJump(InputAction.CallbackContext context) { Activity?.Invoke(); jumpPressed = true; }
+
+        private bool HasHeldJumpControl()
+        {
+            foreach (var control in jump.controls)
+                if (control is ButtonControl button ? button.isPressed :
+                    control.IsActuated(InputSystem.settings.defaultButtonPressPoint)) return true;
+            return false;
+        }
 
         private void ConfigureKeyboardMovement()
         {
@@ -131,6 +150,7 @@ namespace GameJam.Movement
             dashPressed = false;
             dashAttempted = false;
             jumpPressed = false;
+            jumpNeedsRelease = false;
             // A resource gate can disable input before this component's Awake on a failed scene load.
             if (movement != null) movement.ClearInput();
         }
