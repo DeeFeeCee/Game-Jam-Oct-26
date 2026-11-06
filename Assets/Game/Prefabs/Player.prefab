@@ -124,11 +124,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameJam.Movement::GameJam.Movement.PlayerMovement2D
   enableDash: 1
   dashSpeed: 18
-  dashDuration: 0.16
+  dashDuration: 0.2
   dashDirectionDeadZone: 0.2
   dashCollisionSkin: 0.01
-  moveSpeed: 6
-  jumpSpeed: 10
+  moveSpeed: 5.25
+  jumpSpeed: 14
   groundLayers:
     serializedVersion: 2
     m_Bits: 4294967295
