@@ -59,6 +59,7 @@ namespace GameJam.UI
         }
         private void Show()
         {
+            if (ResearchTerminal.Owner != null) ResearchTerminal.Owner.ReleaseForFailure();
             var pause=Object.FindFirstObjectByType<PauseController>();
             if(pause!=null)pause.ReleaseForGameOver();
             pending=false;IsVisible=true;PresentationCount++;

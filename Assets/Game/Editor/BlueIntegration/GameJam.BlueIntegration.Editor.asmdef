@@ -1,0 +1,2 @@
+{"name":"GameJam.BlueIntegration.Editor","references":["GameJam.UI","GameJam.UI.Editor","GameJam.Levels","GameJam.Movement","GameJam.DashResources","GameJam.LevelAuthoring.Editor","Unity.RenderPipelines.Universal.Runtime","Unity.RenderPipelines.Core.Runtime","UnityEngine.UI","Unity.InputSystem","Unity.TextMeshPro"],"includePlatforms":["Editor"]}
+
