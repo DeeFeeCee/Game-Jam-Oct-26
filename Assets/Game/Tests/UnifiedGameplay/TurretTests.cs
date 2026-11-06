@@ -1,8 +1,12 @@
 #if UNITY_EDITOR
 using System.Collections;
+using System.Linq;
+using GameJam.Levels;
 using GameJam.Mechanics;
+using GameJam.Movement;
 using GameJam.Resources;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
@@ -73,6 +77,201 @@ namespace GameJam.UnifiedGameplay.Tests
             var original = SceneManager.GetActiveScene(); var extra = SceneManager.CreateScene("Turret cleanup fixture");
             SceneManager.SetActiveScene(extra); var shot = Projectile(new Vector2(0,3),Vector2.right,2);
             SceneManager.SetActiveScene(original); yield return SceneManager.UnloadSceneAsync(extra); Assert.IsTrue(shot == null);
+        }
+
+        private LevelSetup SpawnLevelPlayer(Vector2 position)
+        {
+            var root = Own(new GameObject("Level setup"));
+            root.SetActive(false);
+            root.transform.position = position;
+            var level = root.AddComponent<LevelSetup>();
+            level.spawn = root.transform;
+            level.playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Game/Prefabs/Player.prefab");
+            level.bankPrefab = AssetDatabase.LoadAssetAtPath<RunDashBank>("Assets/Game/Prefabs/RunDashBank.prefab");
+            root.SetActive(true);
+            Own(level.Player);
+            level.Player.GetComponent<PlayerMovementInput2D>().enabled = false;
+            level.Player.GetComponent<Rigidbody2D>().gravityScale = 0;
+            return level;
+        }
+
+        private Turret2D TargetingTurret(Vector2 muzzlePosition, float interval = 5)
+        {
+            var turret = Turret(.1f, interval);
+            var muzzle = new GameObject("Muzzle").transform;
+            muzzle.SetParent(turret.transform);
+            muzzle.position = muzzlePosition;
+            turret.muzzle = muzzle;
+            turret.aimAtPlayer = true;
+            return turret;
+        }
+
+        private static Rigidbody2D ShotBody()
+        {
+            return Object.FindObjectsByType<TurretProjectile2D>(FindObjectsSortMode.None)
+                .Single().GetComponent<Rigidbody2D>();
+        }
+
+        private static void AssertHeading(Vector2 displacement, Vector2 expected)
+        {
+            Assert.That(displacement.sqrMagnitude, Is.GreaterThan(.0001f));
+            Assert.That(Vector2.Angle(displacement, expected), Is.LessThan(.5f));
+        }
+
+        [UnityTest] public IEnumerator FixedModeIgnoresTheLevelPlayerAndKeepsItsDefaultOrigin()
+        {
+            SpawnLevelPlayer(new Vector2(-8, 10));
+            var turret = Turret(.1f, 5);
+            Assert.IsFalse(turret.aimAtPlayer);
+            yield return Ticks(8);
+
+            Assert.AreEqual(1, turret.ShotsFired);
+            AssertHeading(ShotBody().position - new Vector2(.6f, 0), Vector2.right);
+        }
+
+        [UnityTest] public IEnumerator TargetingUsesTheMuzzleAndTheLevelOwnedPlayer()
+        {
+            var muzzle = new Vector2(3, 2);
+            var target = new Vector2(8, 12);
+            SpawnLevelPlayer(target);
+            Player(new Vector2(-3, 4)); // Bank-linked fixture with no owning LevelSetup.
+            TargetingTurret(muzzle);
+            yield return Ticks(8);
+
+            AssertHeading(ShotBody().position - muzzle, target - muzzle);
+        }
+
+        [UnityTest] public IEnumerator NewShotRetargetsWhileTheFirstShotKeepsItsHeading()
+        {
+            var firstTarget = new Vector2(8, 10);
+            var secondTarget = new Vector2(-8, 10);
+            var player = SpawnLevelPlayer(firstTarget).Player.GetComponent<Rigidbody2D>();
+            var turret = TargetingTurret(Vector2.zero, .45f);
+            yield return Ticks(8);
+            var first = ShotBody();
+            var before = first.position;
+            player.position = secondTarget;
+
+            yield return Ticks(25);
+
+            Assert.AreEqual(2, turret.ShotsFired);
+            var second = Object.FindObjectsByType<TurretProjectile2D>(FindObjectsSortMode.None)
+                .Select(shot => shot.GetComponent<Rigidbody2D>()).Single(body => body != first);
+            AssertHeading(first.position - before, firstTarget);
+            AssertHeading(second.position, secondTarget);
+        }
+
+        [UnityTest] public IEnumerator MissingLevelPlayerFallsBackToFixedAim()
+        {
+            var turret = Turret(.1f, 5);
+            turret.aimAtPlayer = true;
+            yield return Ticks(8);
+            AssertHeading(ShotBody().position - new Vector2(.6f, 0), Vector2.right);
+        }
+
+        [UnityTest] public IEnumerator InactiveLevelPlayerIsNotTargeted()
+        {
+            SpawnLevelPlayer(new Vector2(-8, 10)).Player.SetActive(false);
+            TargetingTurret(Vector2.zero);
+            yield return Ticks(8);
+            AssertHeading(ShotBody().position, Vector2.right);
+        }
+
+        [UnityTest] public IEnumerator NonSimulatingLevelPlayerIsNotTargeted()
+        {
+            var player = SpawnLevelPlayer(new Vector2(-8, 10)).Player.GetComponent<Rigidbody2D>();
+            player.simulated = false;
+            TargetingTurret(Vector2.zero);
+            yield return Ticks(8);
+            AssertHeading(ShotBody().position, Vector2.right);
+        }
+
+        [UnityTest] public IEnumerator PlayerAtMuzzleFallsBackToFixedAim()
+        {
+            var player = SpawnLevelPlayer(Vector2.zero).Player;
+            player.GetComponent<Collider2D>().enabled = false;
+            TargetingTurret(Vector2.zero);
+            yield return Ticks(8);
+            AssertHeading(ShotBody().position, Vector2.right);
+        }
+
+        [UnityTest] public IEnumerator LevelPlayerInAnotherLoadedSceneIsNotTargeted()
+        {
+            var other = SceneManager.CreateScene("Other turret level");
+            var level = SpawnLevelPlayer(new Vector2(-8, 10));
+            SceneManager.MoveGameObjectToScene(level.gameObject, other);
+            SceneManager.MoveGameObjectToScene(level.Player, other);
+            var turret = TargetingTurret(Vector2.zero);
+            yield return Ticks(8);
+            var shot = Object.FindFirstObjectByType<TurretProjectile2D>();
+            yield return SceneManager.UnloadSceneAsync(other);
+
+            Assert.AreEqual(1, turret.ShotsFired);
+            Assert.IsNotNull(shot);
+            AssertHeading(shot.GetComponent<Rigidbody2D>().position, Vector2.right);
+        }
+
+        [UnityTest] public IEnumerator TargetingStillRespectsPauseAndGameOver()
+        {
+            SpawnLevelPlayer(new Vector2(-8, 10));
+            var turret = TargetingTurret(Vector2.zero, .25f);
+            yield return Ticks(8);
+            Assert.AreEqual(1, turret.ShotsFired);
+
+            Time.timeScale = 0;
+            yield return new WaitForSecondsRealtime(.35f);
+            Assert.AreEqual(1, turret.ShotsFired);
+            Time.timeScale = 1;
+            Bank.TryFailEnvironment();
+            yield return Ticks(20);
+
+            Assert.AreEqual(1, turret.ShotsFired);
+            Assert.IsNull(Object.FindFirstObjectByType<TurretProjectile2D>());
+        }
+
+        [UnityTest] public IEnumerator TargetingStillRespectsFiringActivation()
+        {
+            var target = new Vector2(-8, 10);
+            SpawnLevelPlayer(target);
+            var turret = TargetingTurret(Vector2.zero, .25f);
+            turret.SetFiring(false);
+            yield return Ticks(10);
+            Assert.AreEqual(0, turret.ShotsFired);
+
+            turret.SetFiring(true);
+            yield return Ticks(8);
+            Assert.AreEqual(1, turret.ShotsFired);
+            AssertHeading(ShotBody().position, target);
+
+            turret.SetFiring(false);
+            yield return Ticks(20);
+            Assert.AreEqual(1, turret.ShotsFired);
+        }
+
+        [UnityTest] public IEnumerator SolidTerrainBlocksAnAimedShot()
+        {
+            SpawnLevelPlayer(new Vector2(-4, 2));
+            Solid(new Vector2(-2, 2), new Vector2(.25f, 2));
+            var turret = TargetingTurret(new Vector2(0, 2));
+            turret.projectileSpeed = 1000;
+            yield return Ticks(14);
+
+            Assert.AreEqual(1, turret.ShotsFired);
+            Assert.IsFalse(Bank.IsGameOver);
+            Assert.IsNull(Object.FindFirstObjectByType<TurretProjectile2D>());
+        }
+
+        [UnityTest] public IEnumerator AimedHitCausesEnvironmentalFailureWithoutSpending()
+        {
+            SpawnLevelPlayer(new Vector2(-4, 2));
+            var turret = TargetingTurret(new Vector2(0, 2));
+            turret.projectileSpeed = 1000;
+            yield return Ticks(14);
+
+            Assert.AreEqual(1, turret.ShotsFired);
+            Assert.IsTrue(Bank.IsGameOver);
+            Assert.AreEqual(RunFailureCause.Environmental, Bank.FailureCause);
+            Assert.AreEqual(5, Bank.RemainingCharges);
         }
     }
 }
