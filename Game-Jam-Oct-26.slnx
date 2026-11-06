@@ -11,7 +11,9 @@
   <Project Path="GameJam.UI.csproj" />
   <Project Path="GameJam.DashResources.csproj" />
   <Project Path="GameJam.Credits.PlayModeTests.csproj" />
+  <Project Path="GameJam.BlueIntegration.Editor.csproj" />
   <Project Path="GameJam.SingleScreen.csproj" />
+  <Project Path="GameJam.BlueIntegration.PlayModeTests.csproj" />
   <Project Path="GameJam.SingleScreen.PlayModeTests.csproj" />
   <Project Path="GameJam.Presentation.csproj" />
   <Project Path="GameJam.Levels.csproj" />
@@ -25,6 +27,7 @@
   <Project Path="GameJam.LevelVerification.csproj" />
   <Project Path="GameJam.LevelAuthoring.EditModeTests.csproj" />
   <Project Path="GameJam.Mechanics.Editor.csproj" />
+  <Project Path="GameJam.BlueIntegration.EditorTests.csproj" />
   <Project Path="GameJam.DashResources.PrototypeEditor.csproj" />
   <Project Path="GameJam.MechanicsVerification.csproj" />
   <Project Path="GameJam.GameOver.PlayModeTests.csproj" />
