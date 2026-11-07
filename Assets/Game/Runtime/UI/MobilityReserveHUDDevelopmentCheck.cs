@@ -28,7 +28,7 @@ namespace GameJam.UI
             Directory.CreateDirectory(output); yield return new WaitForSecondsRealtime(.5f);
             var menu = FindFirstObjectByType<MainMenuView>();
             if (!Check(menu != null && FindFirstObjectByType<MobilityReserveHUDController>() == null, "MainMenu starts without gameplay HUD")) yield break;
-            string level = menu.launcher.gameplayScene; int handle = SceneManager.GetActiveScene().handle;
+            string level = NarrativePrologue.LevelPath; int handle = SceneManager.GetActiveScene().handle;
             menu.newGameButton.onClick.Invoke(); yield return WaitForScene(level, handle);
             if (!CheckDisplay(5, "New Game")) yield break;
             foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1920, 1080), new Vector2Int(2560, 1440), new Vector2Int(1024, 768) })
@@ -120,7 +120,11 @@ namespace GameJam.UI
         private IEnumerator WaitForScene(string path, int handle)
         {
             double deadline = Time.realtimeSinceStartupAsDouble + 20;
-            while ((SceneManager.GetActiveScene().handle == handle || SceneManager.GetActiveScene().path != path) && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
+            while ((SceneManager.GetActiveScene().handle == handle || SceneManager.GetActiveScene().path != path) && Time.realtimeSinceStartupAsDouble < deadline)
+            {
+                if (path == NarrativePrologue.LevelPath) FindFirstObjectByType<NarrativePrologue>()?.TrySkip();
+                yield return null;
+            }
             Check(SceneManager.GetActiveScene().handle != handle && SceneManager.GetActiveScene().path == path, "Loaded " + path); yield return null; yield return null;
         }
         private IEnumerator Capture(string name)

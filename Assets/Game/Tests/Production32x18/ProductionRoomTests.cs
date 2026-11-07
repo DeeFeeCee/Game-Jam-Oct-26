@@ -185,6 +185,11 @@ namespace GameJam.LevelAuthoring.Tests
         {
             yield return Load("Assets/Game/Scenes/MainMenu.unity");
             Object.FindFirstObjectByType<MainMenuView>().newGameButton.onClick.Invoke();
+            yield return AwaitScene(NarrativePrologue.ScenePath);
+            var intro = Object.FindFirstObjectByType<NarrativePrologue>();
+            yield return new WaitUntil(() => intro.InputArmed, System.TimeSpan.FromSeconds(6),
+                () => Assert.Fail("Prologue did not accept input."));
+            Assert.IsTrue(intro.TrySkip());
             yield return AwaitScene(LevelAuthoring32x18.Level01);
             Assert.NotNull(Object.FindFirstObjectByType<RoomGrid32x18>());
             Assert.AreEqual(new Vector3(16, 9, -10), Camera.main.transform.position);
@@ -270,7 +275,8 @@ namespace GameJam.LevelAuthoring.Tests
             .Where(c => !c.isTrigger && c.attachedRigidbody == null).ToArray();
         private static IEnumerator AwaitScene(string path)
         {
-            for (int i = 0; i < 300 && SceneManager.GetActiveScene().path != path; i++) yield return null;
+            double deadline = Time.realtimeSinceStartupAsDouble + 6;
+            while (SceneManager.GetActiveScene().path != path && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
             Assert.AreEqual(path, SceneManager.GetActiveScene().path); yield return null; yield return null;
         }
     }

@@ -85,7 +85,9 @@ namespace GameJam.UI.Tests
         }
         private IEnumerator WaitForLoad(string path, int oldHandle)
         {
-            for (int i = 0; i < 300 && (SceneManager.GetActiveScene().handle == oldHandle || SceneManager.GetActiveScene().path != path); i++) yield return null;
+            double deadline = Time.realtimeSinceStartupAsDouble + 6;
+            while ((SceneManager.GetActiveScene().handle == oldHandle || SceneManager.GetActiveScene().path != path) &&
+                Time.realtimeSinceStartupAsDouble < deadline) yield return null;
             Assert.AreNotEqual(oldHandle, SceneManager.GetActiveScene().handle); Assert.AreEqual(path, SceneManager.GetActiveScene().path); yield return null; yield return null;
         }
         private IEnumerator Fail()
@@ -171,6 +173,11 @@ namespace GameJam.UI.Tests
             Assert.IsTrue(old == null); Assert.IsNull(Object.FindFirstObjectByType<MobilityReserveHUDController>()); Assert.AreEqual(3, bank.RemainingCharges);
             Assert.AreEqual(0, Subscribers("ChargesChanged")); Assert.AreEqual(0, Subscribers("NewRunStarted"));
             handle = SceneManager.GetActiveScene().handle; Object.FindFirstObjectByType<MainMenuView>().newGameButton.onClick.Invoke();
+            yield return WaitForLoad(NarrativePrologue.ScenePath, handle);
+            var intro = Object.FindFirstObjectByType<NarrativePrologue>();
+            yield return new WaitUntil(() => intro.InputArmed, System.TimeSpan.FromSeconds(6),
+                () => Assert.Fail("Prologue did not accept input."));
+            Assert.IsTrue(intro.TrySkip());
             yield return WaitForLoad(Level, handle); Refresh(); AssertDisplay(5);
         }
         [UnityTest] public IEnumerator FailureReturnRemovesHUDAndPreservesFailedZero()

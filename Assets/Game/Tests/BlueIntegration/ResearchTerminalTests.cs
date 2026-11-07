@@ -233,8 +233,19 @@ namespace GameJam.BlueIntegration.Tests
             yield return QueueKeys(Key.UpArrow, Key.Space);
             var launcher = Object.FindFirstObjectByType<NewGameLauncher>();
             Assert.IsTrue(launcher.TryStartNewGame());
-            yield return WaitForScene(Level01);
+            yield return WaitForScene(NarrativePrologue.ScenePath);
+            var intro = Object.FindFirstObjectByType<NarrativePrologue>();
             Assert.IsTrue(keyboard.upArrowKey.isPressed && keyboard.spaceKey.isPressed);
+            Assert.IsFalse(intro.InputArmed);
+            yield return QueueKeys();
+            yield return new WaitUntil(() => intro.InputArmed, System.TimeSpan.FromSeconds(6),
+                () => Assert.Fail("Prologue did not rearm after release."));
+            yield return QueueKeys(Key.UpArrow, Key.Space);
+            Assert.IsTrue(intro.TrySkip());
+            yield return new WaitForSecondsRealtime(.35f);
+            Assert.AreEqual(NarrativePrologue.ScenePath, SceneManager.GetActiveScene().path);
+            yield return QueueKeys();
+            yield return WaitForScene(Level01);
             yield return ObserveEntry(null, 5, true);
         }
 

@@ -1,0 +1,40 @@
+{
+  "beats": [
+    {
+      "speaker": "Doctor",
+      "color": "#1155CC",
+      "dialogue": "…procedure status stable…some involuntary muscle activation in upper extremities, closing the incisi- Nurse, anesthesia report?",
+      "stageDirection": "The doctor pauses and sounds mildly frustrated before asking the nurse."
+    },
+    {
+      "speaker": "Nurse",
+      "color": "#00FFFF",
+      "dialogue": "He’s supposed to be out, his vitals need to be recalibrated."
+    },
+    {
+      "speaker": "Doctor",
+      "color": "#1155CC",
+      "dialogue": "Addendum to Log 48 of procedure… ...subject exhibiting signs of e. delirium, reworking levels, procedure still viable. Will proceed with Stage 2 once the subject settles. End log. Nurse, can you expedite the process? Nurse!",
+      "stageDirection": "Jett screams in the background. The doctor sighs with boredom, a recorder clicks, and the doctor resumes with frustration."
+    },
+    {
+      "speaker": "Jett",
+      "displayName": "JETT",
+      "color": "#FF0000",
+      "internalSpeech": true,
+      "dialogue": "Everything hurts, there’s a burning, slippery liquid on me……gasoline smell.…or may..be..…iron……….help",
+      "stageDirection": "Frightened, disoriented internal speech."
+    },
+    {
+      "speaker": "Nurse",
+      "color": "#00FFFF",
+      "dialogue": "Restraints still intact, he’s going out again."
+    },
+    {
+      "speaker": "Doctor",
+      "color": "#1155CC",
+      "dialogue": "Finally, no time to waste. Initializing Stage 2. Scalpel….",
+      "stageDirection": "The doctor sighs with relief."
+    }
+  ]
+}
