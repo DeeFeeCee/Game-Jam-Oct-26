@@ -71,7 +71,9 @@ namespace GameJam.UI.Tests
         }
         private IEnumerator WaitForLoad(string path,int oldHandle)
         {
-            for(int i=0;i<240&&(SceneManager.GetActiveScene().handle==oldHandle||SceneManager.GetActiveScene().path!=path);i++)yield return null;
+            double deadline = Time.realtimeSinceStartupAsDouble + 6;
+            while ((SceneManager.GetActiveScene().handle == oldHandle || SceneManager.GetActiveScene().path != path) &&
+                Time.realtimeSinceStartupAsDouble < deadline) yield return null;
             Assert.AreNotEqual(oldHandle,SceneManager.GetActiveScene().handle);Assert.AreEqual(path,SceneManager.GetActiveScene().path);yield return null;yield return null;
         }
         private IEnumerator Key(Key key)
@@ -178,7 +180,13 @@ namespace GameJam.UI.Tests
             Assert.IsTrue(controller.TryReturnToMainMenu());Assert.IsFalse(controller.TryReturnToMainMenu());Assert.IsFalse(controller.TryRestartRun());yield return WaitForLoad(MenuBuilder.ScenePath,handle);
             Assert.IsTrue(old==null);Assert.IsTrue(actions==null);Assert.IsNull(Object.FindFirstObjectByType<GameOverController>());Assert.AreEqual(0,bank.RemainingCharges);Assert.IsTrue(bank.IsGameOver);
             Assert.AreEqual(1,Object.FindObjectsByType<EventSystem>(FindObjectsSortMode.None).Length);
-            var menu=Object.FindFirstObjectByType<MainMenuView>();handle=SceneManager.GetActiveScene().handle;menu.newGameButton.onClick.Invoke();yield return WaitForLoad(Level,handle);Assert.AreEqual(bank.StartingDashCount,bank.RemainingCharges);
+            var menu=Object.FindFirstObjectByType<MainMenuView>();handle=SceneManager.GetActiveScene().handle;menu.newGameButton.onClick.Invoke();
+            yield return WaitForLoad(NarrativePrologue.ScenePath, handle);
+            var intro = Object.FindFirstObjectByType<NarrativePrologue>();
+            yield return new WaitUntil(() => intro.InputArmed, System.TimeSpan.FromSeconds(6),
+                () => Assert.Fail("Prologue did not accept input."));
+            Assert.IsTrue(intro.TrySkip());
+            yield return WaitForLoad(Level,handle);Assert.AreEqual(bank.StartingDashCount,bank.RemainingCharges);
         }
         [UnityTest] public IEnumerator SubscriptionsCleanUpOnMenuTransition()
         {

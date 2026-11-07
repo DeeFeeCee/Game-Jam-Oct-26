@@ -66,6 +66,8 @@ namespace GameJam.UI.Editor
 
             var root=new GameObject("MainMenu");root.SetActive(false);
             var launcher=root.AddComponent<NewGameLauncher>();var view=root.AddComponent<MainMenuView>();view.launcher=launcher;
+            launcher.gameplayScene=NarrativePrologue.ScenePath;
+            launcher.initialBankPrefab=AssetDatabase.LoadAssetAtPath<GameJam.Resources.RunDashBank>("Assets/Game/Prefabs/RunDashBank.prefab");
             var es=new GameObject("MenuEventSystem",typeof(EventSystem),typeof(InputSystemUIInputModule));es.transform.SetParent(root.transform);
             var module=es.GetComponent<InputSystemUIInputModule>();module.enabled=false;
             var scope=es.AddComponent<MenuInputScope>();scope.inputActions=AssetDatabase.LoadAssetAtPath<InputActionAsset>("Assets/Settings/InputSystem_Actions.inputactions");view.inputScope=scope;

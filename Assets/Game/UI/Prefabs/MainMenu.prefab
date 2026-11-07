@@ -5506,7 +5506,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20f1494b3989bf64fac365d7cdcea354, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GameJam.UI::GameJam.UI.NewGameLauncher
-  gameplayScene: Assets/Game/Scenes/Levels/Level01.unity
+  gameplayScene: Assets/Game/Scenes/Intro/NarrativePrologue.unity
+  initialBankPrefab: {fileID: 3883743260940928466, guid: c676761c5593e2e45b55a176b9f75023, type: 3}
 --- !u!114 &6091903788728466055
 MonoBehaviour:
   m_ObjectHideFlags: 0

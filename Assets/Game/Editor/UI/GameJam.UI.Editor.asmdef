@@ -1,1 +1,1 @@
-{"name":"GameJam.UI.Editor","references":["GameJam.UI","UnityEngine.UI","Unity.InputSystem","Unity.TextMeshPro","Unity.RenderPipelines.Universal.Runtime"],"includePlatforms":["Editor"]}
+{"name":"GameJam.UI.Editor","references":["GameJam.UI","GameJam.DashResources","UnityEngine.UI","Unity.InputSystem","Unity.TextMeshPro","Unity.RenderPipelines.Universal.Runtime"],"includePlatforms":["Editor"]}

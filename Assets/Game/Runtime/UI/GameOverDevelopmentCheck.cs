@@ -27,7 +27,7 @@ namespace GameJam.UI
         {
             Directory.CreateDirectory(output);yield return new WaitForSecondsRealtime(.5f);
             var menu=FindFirstObjectByType<MainMenuView>();if(!Check(menu!=null,"Menu startup"))yield break;
-            string level=menu.launcher.gameplayScene;int handle=SceneManager.GetActiveScene().handle;
+            string level=NarrativePrologue.LevelPath;int handle=SceneManager.GetActiveScene().handle;
             menu.newGameButton.onClick.Invoke();yield return WaitForScene(level,handle);
             var bank=RunDashBank.Instance;if(!Check(bank!=null,"Run bank initialized"))yield break;
             WriteBalance("First run",bank);
@@ -73,7 +73,11 @@ namespace GameJam.UI
         private IEnumerator WaitForScene(string path,int previousHandle)
         {
             double deadline=Time.realtimeSinceStartupAsDouble+20;
-            while((SceneManager.GetActiveScene().handle==previousHandle||SceneManager.GetActiveScene().path!=path)&&Time.realtimeSinceStartupAsDouble<deadline)yield return null;
+            while((SceneManager.GetActiveScene().handle==previousHandle||SceneManager.GetActiveScene().path!=path)&&Time.realtimeSinceStartupAsDouble<deadline)
+            {
+                if(path==NarrativePrologue.LevelPath) FindFirstObjectByType<NarrativePrologue>()?.TrySkip();
+                yield return null;
+            }
             Check(SceneManager.GetActiveScene().path==path&&SceneManager.GetActiveScene().handle!=previousHandle,"Loaded "+path);yield return null;yield return null;
         }
         private IEnumerator Capture(string name)

@@ -55,11 +55,60 @@ namespace GameJam.UI.Tests
         private IEnumerator Press(Key key)
         {InputSystem.QueueStateEvent(keyboard,new KeyboardState(key));yield return null;yield return null;InputSystem.QueueStateEvent(keyboard,new KeyboardState());yield return null;}
         private IEnumerator Pad(GamepadButton button)
-        {if(gamepad==null)gamepad=InputSystem.AddDevice<Gamepad>();InputSystem.QueueStateEvent(gamepad,new GamepadState().WithButton(button));yield return null;yield return null;InputSystem.QueueStateEvent(gamepad,new GamepadState());yield return null;}
+        {if(gamepad==null||!gamepad.added)gamepad=InputSystem.AddDevice<Gamepad>();InputSystem.QueueStateEvent(gamepad,new GamepadState().WithButton(button));yield return null;yield return null;InputSystem.QueueStateEvent(gamepad,new GamepadState());yield return null;}
         private IEnumerator WaitForDestination(string path)
-        {for(int i=0;i<240&&SceneManager.GetActiveScene().path!=path;i++)yield return null;Assert.AreEqual(path,SceneManager.GetActiveScene().path);yield return null;}
+        {
+            yield return new WaitUntil(() => SceneManager.GetActiveScene().path == path, System.TimeSpan.FromSeconds(10),
+                () => Assert.Fail("Expected scene " + path));
+            yield return null;
+        }
         private RunDashBank CreateBank()
         {var prefab=AssetDatabase.LoadAssetAtPath<RunDashBank>("Assets/Game/Prefabs/RunDashBank.prefab");return Object.Instantiate(prefab);}
+
+        private static NarrativePrologue Intro => Object.FindFirstObjectByType<NarrativePrologue>();
+        private static IEnumerator AwaitPrologueInput()
+        {
+            Assert.NotNull(Intro);
+            yield return new WaitUntil(() => Intro.InputArmed, System.TimeSpan.FromSeconds(6),
+                () => Assert.Fail("Prologue input did not rearm."));
+        }
+
+        private static IEnumerator AwaitRevealCompletion()
+        {
+            yield return new WaitUntil(() => !Intro.IsRevealing, System.TimeSpan.FromSeconds(8),
+                () => Assert.Fail("The dialogue did not finish revealing."));
+        }
+
+        private static string VisiblePrefix(TMPro.TMP_Text dialogue)
+        {
+            int count = Mathf.Min(dialogue.maxVisibleCharacters, dialogue.textInfo.characterCount);
+            if (count == 0) return "";
+            var last = dialogue.textInfo.characterInfo[count - 1];
+            return dialogue.text.Substring(0, last.index + last.stringLength).TrimEnd();
+        }
+
+        private IEnumerator SkipToLevel()
+        {
+            yield return AwaitPrologueInput();
+            Assert.IsTrue(Intro.TrySkip());
+            Assert.IsFalse(Intro.TrySkip());
+            yield return WaitForDestination(NarrativePrologue.LevelPath);
+        }
+
+        private IEnumerator Click(UnityEngine.UI.Button button, float hold = 0)
+        {
+            if (mouse == null || !mouse.added) mouse = InputSystem.AddDevice<Mouse>();
+            Canvas.ForceUpdateCanvases();
+            var rect = (RectTransform)button.transform;
+            var position = RectTransformUtility.WorldToScreenPoint(null, rect.TransformPoint(rect.rect.center));
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = position });
+            yield return null;
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = position, buttons = 1 });
+            yield return null; yield return null;
+            if (hold > 0) yield return new WaitForSecondsRealtime(hold);
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = position });
+            yield return null; yield return null;
+        }
 
         [UnityTest] public IEnumerator SceneContainsRequiredInteractiveComponents()
         {
@@ -70,25 +119,232 @@ namespace GameJam.UI.Tests
         }
         [UnityTest] public IEnumerator NewGameButtonLoadsProductionLevelAndInitializesFirstBank()
         {
-            string path=view.launcher.gameplayScene;Assert.AreEqual("Assets/Game/Scenes/Levels/Level01.unity",path);
+            string path=view.launcher.gameplayScene;Assert.AreEqual(NarrativePrologue.ScenePath,path);
             view.newGameButton.onClick.Invoke();yield return WaitForDestination(path);
-            Assert.NotNull(RunDashBank.Instance);Assert.AreEqual(RunDashBank.Instance.StartingDashCount,RunDashBank.Instance.RemainingCharges);
+            var bank = RunDashBank.Instance;
+            Assert.NotNull(bank);Assert.AreEqual(bank.StartingDashCount,bank.RemainingCharges);
+            Assert.IsNull(Object.FindFirstObjectByType<LevelSetup>());
+            Assert.IsNull(Object.FindFirstObjectByType<GameJam.Movement.PlayerMovement2D>());
+            yield return SkipToLevel();
+            Assert.AreSame(bank, RunDashBank.Instance);
             Assert.NotNull(Object.FindFirstObjectByType<LevelSetup>().Player);
             Assert.AreEqual(1,Object.FindObjectsByType<RunDashBank>(FindObjectsSortMode.None).Length);
         }
         [UnityTest] public IEnumerator ExistingSpentBalanceResetsWithoutDuplicateBank()
         {
             var bank=CreateBank();bank.TrySpendDash();bank.TrySpendDash();Assert.Less(bank.RemainingCharges,bank.StartingDashCount);
+            int resets = 0; bank.NewRunStarted += () => resets++;
             string path=view.launcher.gameplayScene;view.newGameButton.onClick.Invoke();yield return WaitForDestination(path);
             Assert.AreSame(bank,RunDashBank.Instance);Assert.AreEqual(bank.StartingDashCount,bank.RemainingCharges);
             Assert.AreEqual(1,Object.FindObjectsByType<RunDashBank>(FindObjectsSortMode.None).Length);
+            yield return SkipToLevel();
+            Assert.AreSame(bank, RunDashBank.Instance); Assert.AreEqual(1, resets);
         }
         [UnityTest] public IEnumerator FatalPreviousRunCanStartFresh()
         {
             var bank=CreateBank();while(bank.RemainingCharges>0)bank.TrySpendDash();Assert.IsTrue(bank.IsGameOver);
             string path=view.launcher.gameplayScene;view.newGameButton.onClick.Invoke();yield return WaitForDestination(path);
             Assert.IsFalse(bank.IsGameOver);Assert.AreEqual(bank.StartingDashCount,bank.RemainingCharges);
+            yield return SkipToLevel();
             Assert.IsTrue(Object.FindFirstObjectByType<LevelSetup>().Player.GetComponent<Rigidbody2D>().simulated);
+        }
+
+        [UnityTest] public IEnumerator SixSourceBeatsDisplayInOrderAndCompletionLoadsLevelExactlyOnce()
+        {
+            string[] expectedText =
+            {
+                "…procedure status stable…some involuntary muscle activation in upper extremities, closing the incisi- Nurse, anesthesia report?",
+                "He’s supposed to be out, his vitals need to be recalibrated.",
+                "Addendum to Log 48 of procedure… ...subject exhibiting signs of e. delirium, reworking levels, procedure still viable. Will proceed with Stage 2 once the subject settles. End log. Nurse, can you expedite the process? Nurse!",
+                "Everything hurts, there’s a burning, slippery liquid on me……gasoline smell.…or may..be..…iron……….help",
+                "Restraints still intact, he’s going out again.",
+                "Finally, no time to waste. Initializing Stage 2. Scalpel…."
+            };
+            string[] expectedSpeakers = { "Doctor", "Nurse", "Doctor", "JETT", "Nurse", "Doctor" };
+            string[] expectedColors = { "#1155CC", "#00FFFF", "#1155CC", "#FF0000", "#00FFFF", "#1155CC" };
+            var bank = CreateBank();
+            bank.TrySpendDash();
+            int resets = 0;
+            bank.NewRunStarted += () => resets++;
+            view.newGameButton.onClick.Invoke();
+            yield return WaitForDestination(NarrativePrologue.ScenePath);
+            var texts = Intro.GetComponentsInChildren<TMPro.TMP_Text>();
+            var dialogue = texts.Single(text => text.name == "Spoken Dialogue");
+            var speaker = texts.Single(text => text.name == "Speaker");
+            var progress = texts.Single(text => text.name == "Progress");
+            int loads = 0;
+            void CountLoad(Scene scene, LoadSceneMode mode) { if (scene.path == NarrativePrologue.LevelPath) loads++; }
+            SceneManager.sceneLoaded += CountLoad;
+            try
+            {
+                for (int i = 0; i < expectedText.Length; i++)
+                {
+                    yield return AwaitPrologueInput();
+                    Canvas.ForceUpdateCanvases();
+                    dialogue.ForceMeshUpdate();
+                    Assert.AreEqual(i, Intro.BeatIndex);
+                    Assert.AreEqual(expectedText[i], dialogue.text);
+                    Assert.AreEqual(expectedSpeakers[i], speaker.text);
+                    Assert.AreEqual($"{i + 1:00} / 06", progress.text);
+                    Assert.AreEqual(expectedColors[i], "#" + ColorUtility.ToHtmlStringRGB(dialogue.color));
+                    Assert.AreEqual(i == 3, (dialogue.fontStyle & TMPro.FontStyles.Italic) != 0);
+                    var lines = dialogue.textInfo.characterInfo.Take(dialogue.textInfo.characterCount)
+                        .Select(character => character.lineNumber).ToArray();
+                    yield return AwaitRevealCompletion();
+                    dialogue.ForceMeshUpdate();
+                    Assert.AreEqual(expectedText[i], VisiblePrefix(dialogue));
+                    CollectionAssert.AreEqual(lines, dialogue.textInfo.characterInfo.Take(dialogue.textInfo.characterCount)
+                        .Select(character => character.lineNumber).ToArray(), "Revealing words preserves line wrapping.");
+                    Assert.IsFalse(dialogue.isTextOverflowing, "Spoken dialogue fits without rendering stage directions.");
+                    yield return Press(Key.Enter);
+                }
+                yield return WaitForDestination(NarrativePrologue.LevelPath);
+                Assert.AreEqual(1, loads);
+                Assert.AreEqual(1, resets);
+                Assert.AreSame(bank, RunDashBank.Instance);
+                Assert.AreEqual(bank.StartingDashCount, bank.RemainingCharges);
+            }
+            finally { SceneManager.sceneLoaded -= CountLoad; }
+        }
+
+        [UnityTest] public IEnumerator WordRevealIsUnscaledAndPausesAtTheEllipsisWithoutSplittingWords()
+        {
+            view.newGameButton.onClick.Invoke();
+            yield return WaitForDestination(NarrativePrologue.ScenePath);
+            yield return AwaitPrologueInput();
+            var dialogue = Intro.GetComponentsInChildren<TMPro.TMP_Text>().Single(text => text.name == "Spoken Dialogue");
+            Assert.IsTrue(Intro.IsRevealing);
+            Assert.AreEqual("…procedure", VisiblePrefix(dialogue));
+            var originalTimeScale = Time.timeScale;
+            Time.timeScale = 0;
+            try
+            {
+                yield return new WaitUntil(() => VisiblePrefix(dialogue) == "…procedure status stable…",
+                    System.TimeSpan.FromSeconds(4), () => Assert.Fail("Expected a whole-word ellipsis boundary."));
+                yield return new WaitForSecondsRealtime(.15f);
+                Assert.AreEqual("…procedure status stable…", VisiblePrefix(dialogue));
+                yield return AwaitRevealCompletion();
+                Assert.AreEqual(dialogue.text, VisiblePrefix(dialogue));
+                Assert.AreEqual(0, Intro.BeatIndex, "A complete reveal waits for input.");
+            }
+            finally { Time.timeScale = originalTimeScale; }
+        }
+
+        [UnityTest] public IEnumerator HeldMenuSubmitAndHeldAdvanceRequireRelease()
+        {
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Enter));
+            yield return WaitForDestination(NarrativePrologue.ScenePath);
+            yield return new WaitForSecondsRealtime(.4f);
+            Assert.IsTrue(keyboard.enterKey.isPressed);
+            Assert.IsFalse(Intro.InputArmed);
+            Assert.AreEqual(0, Intro.BeatIndex);
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+            yield return AwaitPrologueInput();
+
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Enter));
+            yield return new WaitForSecondsRealtime(.4f);
+            Assert.AreEqual(0, Intro.BeatIndex);
+            Assert.IsFalse(Intro.IsRevealing);
+            Assert.IsFalse(Intro.InputArmed);
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+            yield return AwaitPrologueInput();
+            yield return Press(Key.Enter);
+            Assert.AreEqual(1, Intro.BeatIndex);
+            Assert.IsTrue(Intro.IsRevealing);
+        }
+
+        [UnityTest] public IEnumerator HeldSpaceBlocksRearmAndAFreshPressStillWorks()
+        {
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Space));
+            yield return null;
+            view.newGameButton.onClick.Invoke();
+            yield return WaitForDestination(NarrativePrologue.ScenePath);
+            yield return new WaitForSecondsRealtime(.4f);
+            Assert.IsFalse(Intro.InputArmed);
+            Assert.AreEqual(0, Intro.BeatIndex);
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+            yield return AwaitPrologueInput();
+            yield return Press(Key.Enter);
+            Assert.AreEqual(0, Intro.BeatIndex);
+            Assert.IsFalse(Intro.IsRevealing);
+            yield return AwaitPrologueInput();
+            yield return Press(Key.Enter);
+            Assert.AreEqual(1, Intro.BeatIndex);
+        }
+
+        [UnityTest] public IEnumerator MouseAdvancesAndSkipsThroughCanvas()
+        {
+            view.newGameButton.onClick.Invoke();
+            yield return WaitForDestination(NarrativePrologue.ScenePath);
+            yield return AwaitPrologueInput();
+            var buttons = Intro.GetComponentsInChildren<UnityEngine.UI.Button>();
+            var advance = buttons.Single(button => button.name == "Continue");
+            yield return Click(advance, .3f);
+            Assert.AreEqual(0, Intro.BeatIndex);
+            Assert.IsFalse(Intro.IsRevealing);
+            yield return AwaitPrologueInput();
+            yield return Click(advance);
+            Assert.AreEqual(1, Intro.BeatIndex);
+            yield return AwaitPrologueInput();
+            Assert.IsTrue(Intro.IsRevealing);
+            yield return Click(buttons.Single(button => button.name == "Skip"));
+            Assert.IsTrue(Intro.IsLeaving);
+            Assert.IsFalse(Intro.TrySkip());
+            yield return WaitForDestination(NarrativePrologue.LevelPath);
+        }
+
+        [UnityTest] public IEnumerator SkipAfterACompletedRevealLoadsLevelOnce()
+        {
+            view.newGameButton.onClick.Invoke();
+            yield return WaitForDestination(NarrativePrologue.ScenePath);
+            yield return AwaitPrologueInput();
+            yield return AwaitRevealCompletion();
+            int loads = 0;
+            void CountLoad(Scene scene, LoadSceneMode mode) { if (scene.path == NarrativePrologue.LevelPath) loads++; }
+            SceneManager.sceneLoaded += CountLoad;
+            try
+            {
+                yield return SkipToLevel();
+                Assert.AreEqual(1, loads);
+            }
+            finally { SceneManager.sceneLoaded -= CountLoad; }
+        }
+
+        [UnityTest] public IEnumerator GamepadNavigatesAdvancesAndSkipsWithoutInheritingJumpOrDash()
+        {
+            view.newGameButton.onClick.Invoke();
+            yield return WaitForDestination(NarrativePrologue.ScenePath);
+            yield return AwaitPrologueInput();
+            Assert.AreEqual("Continue", EventSystem.current.currentSelectedGameObject.name);
+            if (gamepad == null || !gamepad.added) gamepad = InputSystem.AddDevice<Gamepad>();
+            InputSystem.QueueStateEvent(gamepad, new GamepadState().WithButton(GamepadButton.South));
+            yield return new WaitForSecondsRealtime(.35f);
+            Assert.AreEqual(0, Intro.BeatIndex);
+            Assert.IsFalse(Intro.IsRevealing);
+            Assert.IsFalse(Intro.InputArmed);
+            InputSystem.QueueStateEvent(gamepad, new GamepadState());
+            yield return AwaitPrologueInput();
+            yield return Pad(GamepadButton.South);
+            yield return AwaitPrologueInput();
+            Assert.AreEqual(1, Intro.BeatIndex);
+            yield return Pad(GamepadButton.DpadRight);
+            Assert.AreEqual("Skip", EventSystem.current.currentSelectedGameObject.name);
+            InputSystem.QueueStateEvent(gamepad, new GamepadState().WithButton(GamepadButton.South)
+                .WithButton(GamepadButton.RightShoulder));
+            yield return new WaitForSecondsRealtime(.4f);
+            Assert.IsTrue(Intro.IsLeaving);
+            Assert.AreEqual(NarrativePrologue.ScenePath, SceneManager.GetActiveScene().path);
+            Assert.IsFalse(Intro.TrySkip());
+            InputSystem.QueueStateEvent(gamepad, new GamepadState());
+            yield return WaitForDestination(NarrativePrologue.LevelPath);
+            var actor = Object.FindFirstObjectByType<LevelSetup>().Player.GetComponent<GameJam.Movement.PlayerMovement2D>();
+            for (int i = 0; i < 5; i++)
+            {
+                yield return new WaitForFixedUpdate();
+                Assert.Less(actor.GetComponent<Rigidbody2D>().linearVelocity.y, .1f);
+                Assert.IsFalse(actor.IsDashing);
+            }
+            Assert.AreEqual(RunDashBank.Instance.StartingDashCount, RunDashBank.Instance.RemainingCharges);
         }
         [UnityTest] public IEnumerator DuplicateAndReentrantPlayRequestsAreRejected()
         {
