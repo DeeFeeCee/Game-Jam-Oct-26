@@ -66,8 +66,8 @@ namespace GameJam.SingleScreen.Tests
         [UnityTest] public IEnumerator SpawnAndAcceptedPlayerRemainUnscaled()
         {
             yield return Load();var actor=Object.FindFirstObjectByType<PlayerMovement2D>();
-            Assert.AreEqual(3.5f,actor.transform.position.x,.01f);Assert.AreEqual(6,actor.MoveSpeed);Assert.AreEqual(10,actor.JumpSpeed);
-            Assert.AreEqual(18,actor.DashSpeed);Assert.AreEqual(.16f,actor.DashDuration,.001f);
+            Assert.AreEqual(3.5f,actor.transform.position.x,.01f);Assert.AreEqual(5.25f,actor.MoveSpeed);Assert.AreEqual(14,actor.JumpSpeed);
+            Assert.AreEqual(18,actor.DashSpeed);Assert.AreEqual(.20f,actor.DashDuration,.001f);
             Assert.AreEqual(new Vector2(.8f,1.6f),actor.GetComponent<BoxCollider2D>().size);Assert.AreEqual(Vector3.one,actor.transform.localScale);
             Assert.NotNull(actor.GetComponentInChildren<PlayerPresentation>());Assert.AreEqual(5,RunDashBank.Instance.RemainingCharges);
             Assert.IsFalse(SceneDashSettings.AllowsAirDashChaining());

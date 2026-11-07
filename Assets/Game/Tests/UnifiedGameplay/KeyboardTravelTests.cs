@@ -80,7 +80,8 @@ namespace GameJam.UnifiedGameplay.Tests
             InputSystem.QueueStateEvent(gamepad,new GamepadState {leftStick=new Vector2(.5f,.3f)});
             yield return new WaitForSeconds(.08f);
             var body=actor.GetComponent<Rigidbody2D>(); float processed=gamepad.leftStick.ReadValue().x;
-            Assert.That(processed,Is.InRange(.1f,.9f)); Assert.AreEqual(processed*6,body.linearVelocity.x,.01f);
+            var movement=actor.GetComponent<PlayerMovement2D>();
+            Assert.That(processed,Is.InRange(.1f,.9f)); Assert.AreEqual(processed*movement.MoveSpeed,body.linearVelocity.x,.01f);
             Assert.AreEqual(5,RunDashBank.Instance.RemainingCharges);
         }
     }

@@ -59,11 +59,13 @@ namespace GameJam.LevelAuthoring.Tests
 
         [Test] public void RegistrationAppendsWithoutChangingMenuOrExistingOrder()
         {
+            const string newLevel = "Assets/Game/Scenes/Levels/RegistrationFixture.unity";
             var before = EditorBuildSettings.scenes;
-            var result = LevelAuthoring32x18.RegisteredScenes(before, "Assets/Game/Scenes/Levels/Level02.unity");
+            var result = LevelAuthoring32x18.RegisteredScenes(before, newLevel);
+            Assert.AreEqual(before.Length + 1, result.Length);
             CollectionAssert.AreEqual(before.Select(s => s.path), result.Take(before.Length).Select(s => s.path));
             Assert.AreEqual("Assets/Game/Scenes/MainMenu.unity", result[0].path); Assert.IsTrue(result[0].enabled);
-            Assert.AreEqual("Assets/Game/Scenes/Levels/Level02.unity", result.Last().path); Assert.IsTrue(result.Last().enabled);
+            Assert.AreEqual(newLevel, result.Last().path); Assert.IsTrue(result.Last().enabled);
             // The pure preview function must not mutate Build Settings.
             CollectionAssert.AreEqual(before.Select(s => s.path), EditorBuildSettings.scenes.Select(s => s.path));
         }

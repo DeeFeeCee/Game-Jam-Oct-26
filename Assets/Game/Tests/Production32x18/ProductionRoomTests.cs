@@ -21,7 +21,7 @@ namespace GameJam.LevelAuthoring.Tests
 {
     public sealed class ProductionRoomTests
     {
-        private const string Destination = "Assets/Game/Scenes/VerificationDestination.unity";
+        private const string Destination = "Assets/Game/Scenes/Levels/Level02.unity";
         private PlayerMovement2D actor;
 
         [UnityTearDown] public IEnumerator Cleanup()
@@ -66,18 +66,32 @@ namespace GameJam.LevelAuthoring.Tests
             Assert.AreEqual(position, Camera.main.transform.position);
         }
 
-        [UnityTest] public IEnumerator AllNineSolidsUseWholeCellsInsideTheRoom()
+        [UnityTest] public IEnumerator AllNineSolidsMatchAuthoredBoundsInsideTheRoom()
         {
             yield return Load(); var solids = Solids(); Assert.AreEqual(9, solids.Length);
             foreach (var solid in solids)
             {
                 Assert.That(solid.bounds.min.x, Is.InRange(0f, 32f)); Assert.That(solid.bounds.max.x, Is.InRange(0f, 32f));
                 Assert.That(solid.bounds.min.y, Is.InRange(0f, 18f)); Assert.That(solid.bounds.max.y, Is.InRange(0f, 18f));
-                foreach (float value in new[] { solid.bounds.min.x, solid.bounds.max.x, solid.bounds.min.y, solid.bounds.max.y })
-                    Assert.AreEqual(Mathf.Round(value), value, .001f, solid.name);
             }
-            foreach (var pair in new[] { ("Floor", new Vector3(16, .5f)), ("Ceiling", new Vector3(16, 17.5f)), ("Left boundary", new Vector3(.5f, 9)), ("Right boundary", new Vector3(31.5f, 9)) })
-                Assert.AreEqual(pair.Item2, solids.Single(s => s.name == pair.Item1).bounds.center);
+            var authored = new[]
+            {
+                ("Floor", new Vector2(16, .5f), new Vector2(32, 1)),
+                ("Ceiling", new Vector2(16, 17.5f), new Vector2(32, 1)),
+                ("Left boundary", new Vector2(.5f, 9), new Vector2(1, 16)),
+                ("Right boundary", new Vector2(31.5f, 9), new Vector2(1, 16)),
+                ("GridPlatform32x18 (1)", new Vector2(9, 3.5f), new Vector2(4, 1)),
+                ("GridPlatform32x18 (3)", new Vector2(15.5f, 6.5f), new Vector2(2, 1)),
+                ("GridPlatform32x18 (2)", new Vector2(23.5f, 6.5f), new Vector2(4, 1)),
+                ("Landing ledge (1)", new Vector2(29, 9.5f), new Vector2(4, 1)),
+                ("Terminal placeholder", new Vector2(9, 5.25f), new Vector2(1, 1.6f))
+            };
+            foreach (var (name, center, size) in authored)
+            {
+                var bounds = solids.Single(s => s.name == name).bounds;
+                AssertBoundsXY(center, bounds.center, name);
+                AssertBoundsXY(size, bounds.size, name);
+            }
         }
 
         [UnityTest] public IEnumerator ForegroundFramesAndArtMatchEverySolid()
@@ -90,9 +104,12 @@ namespace GameJam.LevelAuthoring.Tests
                 var backing = frame.Find("Backing").GetComponent<SpriteRenderer>();
                 var top = frame.Find("Top").GetComponent<SpriteRenderer>();
                 // Sprite bounds include renderer depth; only XY bounds participate in 2D collision.
-                Assert.AreEqual((Vector2)solid.bounds.center, (Vector2)art.bounds.center); Assert.AreEqual((Vector2)solid.bounds.size, (Vector2)art.bounds.size);
-                Assert.AreEqual((Vector2)solid.bounds.center, (Vector2)backing.bounds.center); Assert.AreEqual((Vector2)solid.bounds.size, (Vector2)backing.bounds.size);
-                Assert.AreEqual(.05f, top.bounds.size.y, .001f); Assert.AreEqual(solid.bounds.max.y, top.bounds.max.y, .001f);
+                AssertBoundsXY(solid.bounds.center, art.bounds.center, solid.name);
+                AssertBoundsXY(solid.bounds.size, art.bounds.size, solid.name);
+                AssertBoundsXY(solid.bounds.center, backing.bounds.center, solid.name);
+                AssertBoundsXY(solid.bounds.size, backing.bounds.size, solid.name);
+                Assert.AreEqual(.05f * Mathf.Abs(solid.transform.lossyScale.y), top.bounds.size.y, .001f, solid.name);
+                Assert.AreEqual(solid.bounds.max.y, top.bounds.max.y, .001f, solid.name);
                 Assert.Greater(top.color.grayscale, backing.color.grayscale + .5f);
                 Assert.IsEmpty(frame.GetComponentsInChildren<Collider2D>());
             }
@@ -107,8 +124,8 @@ namespace GameJam.LevelAuthoring.Tests
             Assert.AreEqual(new Vector3(3.5f, 1.81f), setup.spawn.position);
             Assert.AreEqual(Vector3.one, actor.transform.localScale);
             Assert.AreEqual(new Vector2(.8f, 1.6f), actor.GetComponent<BoxCollider2D>().size);
-            Assert.AreEqual(6, actor.MoveSpeed); Assert.AreEqual(10, actor.JumpSpeed);
-            Assert.AreEqual(18, actor.DashSpeed); Assert.AreEqual(.16f, actor.DashDuration, .001f);
+            Assert.AreEqual(5.25f, actor.MoveSpeed); Assert.AreEqual(14, actor.JumpSpeed);
+            Assert.AreEqual(18, actor.DashSpeed); Assert.AreEqual(.20f, actor.DashDuration, .001f);
             Assert.AreEqual(3, actor.GetComponent<Rigidbody2D>().gravityScale);
             Assert.NotNull(actor.GetComponentInChildren<PlayerPresentation>());
             Assert.AreEqual(5, RunDashBank.Instance.RemainingCharges); Assert.IsFalse(SceneDashSettings.AllowsAirDashChaining());
@@ -139,23 +156,46 @@ namespace GameJam.LevelAuthoring.Tests
             }
         }
 
-        [UnityTest] public IEnumerator ActualRouteJumpsDashesAndEntersExitWithPersistentBalance()
+        [UnityTest] public IEnumerator ActualRouteJumpsDashesAndEntersExitWithPersistentBalance() => Traverse(true);
+
+        [UnityTest] public IEnumerator ActualRouteCanReachLevel02WithoutSpendingAnyDash() => Traverse(false);
+
+        private IEnumerator Traverse(bool spendDash)
         {
-            yield return Load(); var bank = RunDashBank.Instance;
-            bool first = false, second = false, third = false, launch = false, dash = false; int afterLaunch = 0;
-            for (int tick = 0; tick < 1200 && SceneManager.GetActiveScene().path == LevelAuthoring32x18.Level01; tick++)
+            yield return Load();
+            var bank = RunDashBank.Instance;
+            yield return LandAt(1, "floor");
+            yield return MoveRightTo(4.9f);
+            actor.RequestJump();
+            yield return MoveRightTo(7.7f);
+            yield return LandAt(4, "first platform");
+            actor.RequestJump();
+            yield return MoveRightTo(9.0f);
+            yield return LandAt(6.05f, "terminal top");
+            yield return MoveRightTo(9.72f);
+            Assert.IsTrue(actor.IsGrounded, "The terminal edge must still support the jump.");
+            actor.RequestJump();
+            yield return MoveRightTo(14.7f);
+            yield return LandAt(7, "middle platform");
+            yield return MoveRightTo(16.68f);
+            Assert.IsTrue(actor.IsGrounded, "The middle platform edge must still support the jump.");
+            actor.RequestJump();
+            yield return MoveRightTo(22.4f);
+            yield return LandAt(7, "far platform");
+            yield return MoveRightTo(24.8f);
+            actor.RequestJump();
+            yield return MoveRightTo(26.05f);
+            if (spendDash)
             {
-                actor.SetHorizontalInput(1); float x = actor.transform.position.x;
-                if (!first && x > 4.7f && actor.IsGrounded) { actor.RequestJump(); first = true; }
-                if (!second && first && x > 9.2f && actor.IsGrounded) { actor.RequestJump(); second = true; }
-                if (!third && second && x > 14.2f && actor.IsGrounded) { actor.RequestJump(); third = true; }
-                if (!launch && third && x > 18.8f && actor.IsGrounded) { actor.RequestJump(); launch = true; }
-                if (launch && !dash && ++afterLaunch >= 7) { actor.RequestDash(Vector2.up); dash = true; }
+                actor.RequestDash(Vector2.up);
                 yield return new WaitForFixedUpdate();
+                Assert.IsTrue(actor.IsDashing, "The ledge approach must execute a real upward dash.");
             }
-            Assert.AreEqual(Destination, SceneManager.GetActiveScene().path, "Traversal must reach the real trigger without moving transforms directly.");
-            Assert.IsTrue(first && second && third && launch && dash);
-            Assert.AreSame(bank, RunDashBank.Instance); Assert.AreEqual(4, bank.RemainingCharges); Assert.IsFalse(bank.IsGameOver);
+            actor.SetHorizontalInput(1);
+            yield return AwaitScene(Destination);
+            Assert.AreSame(bank, RunDashBank.Instance);
+            Assert.AreEqual(spendDash ? 4 : 5, bank.RemainingCharges);
+            Assert.IsFalse(bank.IsGameOver);
         }
 
         [UnityTest] public IEnumerator ExitLoadsOnceAndPreservesBankAcrossScenes()
@@ -167,7 +207,7 @@ namespace GameJam.LevelAuthoring.Tests
             Assert.AreSame(bank, RunDashBank.Instance); Assert.AreEqual(4, bank.RemainingCharges);
             Assert.AreEqual(1, Object.FindObjectsByType<RunDashBank>(FindObjectsSortMode.None).Length);
             Assert.AreEqual(1, Object.FindObjectsByType<PlayerMovement2D>(FindObjectsSortMode.None).Length);
-            Assert.IsTrue(SceneDashSettings.AllowsAirDashChaining());
+            Assert.IsFalse(SceneDashSettings.AllowsAirDashChaining());
         }
 
         [UnityTest] public IEnumerator FinalChargeHasNoTravelAndCannotCompleteProductionExit()
@@ -273,6 +313,35 @@ namespace GameJam.LevelAuthoring.Tests
 
         private static BoxCollider2D[] Solids() => Object.FindObjectsByType<BoxCollider2D>(FindObjectsSortMode.None)
             .Where(c => !c.isTrigger && c.attachedRigidbody == null).ToArray();
+
+        private static void AssertBoundsXY(Vector2 expected, Vector2 actual, string name)
+        {
+            Assert.AreEqual(expected.x, actual.x, .001f, name + " X");
+            Assert.AreEqual(expected.y, actual.y, .001f, name + " Y");
+        }
+
+        private IEnumerator MoveRightTo(float x)
+        {
+            var body = actor.GetComponent<Rigidbody2D>();
+            actor.SetHorizontalInput(1);
+            for (int tick = 0; tick < 100 && body.position.x < x; tick++)
+                yield return new WaitForFixedUpdate();
+            actor.SetHorizontalInput(0);
+            Assert.GreaterOrEqual(body.position.x, x, $"Expected to reach X={x}. Stopped at {body.position}.");
+        }
+
+        private IEnumerator LandAt(float feetY, string surface)
+        {
+            var box = actor.GetComponent<BoxCollider2D>();
+            for (int tick = 0; tick < 100; tick++)
+            {
+                if (actor.IsGrounded && Mathf.Abs(box.bounds.min.y - feetY) < .07f)
+                    yield break;
+                yield return new WaitForFixedUpdate();
+            }
+            Assert.Fail($"Expected to land on {surface} at Y={feetY}. Feet ended at {box.bounds.min}, grounded={actor.IsGrounded}.");
+        }
+
         private static IEnumerator AwaitScene(string path)
         {
             double deadline = Time.realtimeSinceStartupAsDouble + 6;
