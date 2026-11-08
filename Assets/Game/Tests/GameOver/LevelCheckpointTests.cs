@@ -76,6 +76,8 @@ namespace GameJam.UI.Tests
                 yield return FailEnvironmentally();
                 Assert.AreEqual(2, bank.RemainingCharges);
                 var failure = Object.FindFirstObjectByType<GameOverController>();
+                Assert.AreEqual("RETRY LEVEL", failure.restartButton.GetComponentInChildren<TMPro.TMP_Text>(true).text);
+                Assert.IsFalse(failure.TryRestartRun());
                 var oldBody = Object.FindFirstObjectByType<LevelSetup>().Player.GetComponent<Rigidbody2D>();
                 int oldHandle = SceneManager.GetActiveScene().handle;
                 int before = balanceEvents;
@@ -96,6 +98,25 @@ namespace GameJam.UI.Tests
                 Assert.IsFalse(Object.FindFirstObjectByType<GameOverController>().IsVisible);
                 Assert.AreEqual(1, Object.FindObjectsByType<RunDashBank>(FindObjectsSortMode.None).Length);
             }
+        }
+
+        [UnityTest] public IEnumerator EnvironmentalFailureAtOneChargeCanRetryThroughTheBank()
+        {
+            while (bank.RemainingCharges > 2) Assert.IsTrue(bank.TrySpendDash());
+            yield return Load(Level04);
+            AssertCheckpoint(Level04, 2);
+            Assert.IsTrue(bank.TrySpendDash());
+            yield return FailEnvironmentally();
+            AssertCheckpoint(Level04, 2, remaining: 1);
+            int resets = 0;
+            bank.NewRunStarted += () => resets++;
+            var scene = SceneManager.GetActiveScene();
+            Assert.IsTrue(bank.TryRetryLevel(scene));
+            Assert.IsFalse(bank.TryRetryLevel(scene));
+            yield return AwaitScene(Level04, scene.handle);
+            AssertCheckpoint(Level04, 2);
+            Assert.AreEqual(RunFailureCause.None, bank.FailureCause);
+            Assert.AreEqual(0, resets);
         }
 
         [UnityTest] public IEnumerator Level05ReplacesLevel04CheckpointAndNewGameClearsIt()

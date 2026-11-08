@@ -28,6 +28,8 @@ namespace GameJam.UI
         public bool IsNavigating {get;private set;}
         public int PresentationCount {get;private set;}
         private RunDashBank bank;
+        private TMP_Text primaryActionLabel;
+        private bool IsMobilityExhaustion => bank != null && bank.FailureCause == RunFailureCause.MobilityExhaustion;
         private bool pending;
         private readonly List<UIOwner> suspendedOwners=new List<UIOwner>();
         private sealed class UIOwner
@@ -38,7 +40,8 @@ namespace GameJam.UI
         }
         private void OnEnable()
         {
-            restartButton.onClick.AddListener(Restart);mainMenuButton.onClick.AddListener(MainMenu);BindBank();
+            primaryActionLabel = restartButton.GetComponentInChildren<TMP_Text>(true);
+            restartButton.onClick.AddListener(ActivatePrimaryAction);mainMenuButton.onClick.AddListener(MainMenu);BindBank();
         }
         private void BindBank()
         {
@@ -64,6 +67,7 @@ namespace GameJam.UI
             // Optional Inspector reference; preserve the accepted prefab and all its object IDs.
             if(failureReason==null)failureReason=overlay.transform.Find("FailurePanel/Reason")?.GetComponent<TMP_Text>();
             if(failureReason!=null)failureReason.text=bank.FailureCause==RunFailureCause.Environmental?environmentalFailureReason:mobilityFailureReason;
+            if (primaryActionLabel != null) primaryActionLabel.text = IsMobilityExhaustion ? "RESTART RUN" : "RETRY LEVEL";
             SuspendOtherUI();overlay.SetActive(true);uiEventSystem.gameObject.SetActive(true);
             restartButton.interactable=mainMenuButton.interactable=false;
             status.text=releasePrompt;FocusRestart();
@@ -76,15 +80,53 @@ namespace GameJam.UI
         private void FocusRestart()
         {uiEventSystem.SetSelectedGameObject(null);uiEventSystem.SetSelectedGameObject(restartButton.gameObject);}
         private bool CanAct()=>IsVisible&&InputArmed&&!IsNavigating&&bank!=null&&bank.IsGameOver;
-        private void Restart()=>TryRetryLevel();
+        private void ActivatePrimaryAction()
+        {
+            if (IsMobilityExhaustion) TryRestartRun();
+            else TryRetryLevel();
+        }
         private void MainMenu()=>TryReturnToMainMenu();
         public bool TryRetryLevel()
         {
-            if(!CanAct())return false;
+            if (!CanAct() || bank.FailureCause != RunFailureCause.Environmental) return false;
             IsNavigating=true;SetNavigationState(true);
             if(bank.TryRetryLevel(gameObject.scene))return true;
             IsNavigating=false;SetNavigationState(false);status.text=retryUnavailable;return false;
         }
+        public bool TryRestartRun()
+        {
+            if (!CanAct() || !IsMobilityExhaustion) return false;
+            const string entry = NarrativePrologue.ScenePath;
+            const string unavailable = "Restart Run is unavailable. You can return to the Main Menu.";
+            if (!Application.CanStreamedLevelBeLoaded(entry))
+            {
+                status.text = unavailable;
+                return false;
+            }
+
+            IsNavigating = true;
+            SetNavigationState(true);
+            AsyncOperation load;
+            try { load = SceneManager.LoadSceneAsync(entry, LoadSceneMode.Single); }
+            catch (System.ArgumentException) { load = null; }
+            if (load == null)
+            {
+                IsNavigating = false;
+                SetNavigationState(false);
+                status.text = unavailable;
+                return false;
+            }
+
+            // Reset after the departing player is unloaded. NewRunStarted can re-enable a linked player.
+            var failedBank = bank;
+            load.completed += _ =>
+            {
+                if (failedBank != null && failedBank.FailureCause == RunFailureCause.MobilityExhaustion)
+                    failedBank.InitializeNewRun();
+            };
+            return true;
+        }
+
         public bool TryReturnToMainMenu()
         {
             if(!CanAct())return false;
@@ -114,7 +156,7 @@ namespace GameJam.UI
         }
         private void OnDisable()
         {
-            restartButton.onClick.RemoveListener(Restart);mainMenuButton.onClick.RemoveListener(MainMenu);
+            restartButton.onClick.RemoveListener(ActivatePrimaryAction);mainMenuButton.onClick.RemoveListener(MainMenu);
             if(bank!=null)bank.GameOver-=QueueFailure;bank=null;
             inputScope.enabled=false;uiEventSystem.gameObject.SetActive(false);overlay.SetActive(false);
             foreach(var owner in suspendedOwners)
