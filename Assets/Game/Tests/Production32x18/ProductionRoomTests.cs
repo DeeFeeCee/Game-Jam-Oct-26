@@ -290,7 +290,17 @@ namespace GameJam.LevelAuthoring.Tests
             Assert.IsTrue(failure.IsVisible); Assert.IsTrue(failure.InputArmed);
             int handle = SceneManager.GetActiveScene().handle;
             failure.restartButton.onClick.Invoke();
-            for (int i = 0; i < 300 && SceneManager.GetActiveScene().handle == handle; i++) yield return null;
+            yield return new WaitUntil(() => SceneManager.GetActiveScene().path == NarrativePrologue.ScenePath,
+                System.TimeSpan.FromSeconds(6), () => Assert.Fail("Restart did not load the prologue."));
+            Assert.AreNotEqual(handle, SceneManager.GetActiveScene().handle);
+            Assert.AreEqual("", bank.CheckpointScenePath);
+            var intro = Object.FindFirstObjectByType<NarrativePrologue>();
+            yield return new WaitUntil(() => intro.InputArmed, System.TimeSpan.FromSeconds(6),
+                () => Assert.Fail("Prologue did not accept input."));
+            handle = SceneManager.GetActiveScene().handle;
+            Assert.IsTrue(intro.TrySkip());
+            yield return new WaitUntil(() => SceneManager.GetActiveScene().path == LevelAuthoring32x18.Level01,
+                System.TimeSpan.FromSeconds(6), () => Assert.Fail("Prologue did not load Level01."));
             yield return null; yield return null;
             Assert.AreNotEqual(handle, SceneManager.GetActiveScene().handle);
             Assert.AreEqual(LevelAuthoring32x18.Level01, SceneManager.GetActiveScene().path);

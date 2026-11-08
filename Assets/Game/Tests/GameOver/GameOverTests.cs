@@ -69,6 +69,15 @@ namespace GameJam.UI.Tests
             for(int i=0;i<30&&!controller.IsVisible;i++)yield return null;
             Assert.IsTrue(bank.IsGameOver);Assert.AreEqual(0,bank.RemainingCharges);Assert.IsTrue(controller.IsVisible);
         }
+        private IEnumerator FailEnvironmentally()
+        {
+            while (bank.RemainingCharges > 2) Assert.IsTrue(bank.TrySpendDash());
+            Assert.IsTrue(bank.TryFailEnvironment());
+            yield return null;
+            yield return null;
+            Assert.IsTrue(controller.IsVisible && controller.InputArmed);
+            Assert.AreEqual(RunFailureCause.Environmental, bank.FailureCause);
+        }
         private IEnumerator WaitForLoad(string path,int oldHandle)
         {
             double deadline = Time.realtimeSinceStartupAsDouble + 6;
@@ -88,12 +97,18 @@ namespace GameJam.UI.Tests
             actor.RequestDash(Vector2.up);yield return new WaitForFixedUpdate();
             Assert.AreEqual(before,body.position);Assert.IsFalse(body.simulated);Assert.IsFalse(actor.enabled);Assert.IsFalse(actor.IsDashing);
             yield return null;Assert.IsTrue(controller.IsVisible);
+            Assert.AreEqual(RunFailureCause.MobilityExhaustion, bank.FailureCause);
+            Assert.AreEqual("RESTART RUN", controller.restartButton.GetComponentInChildren<TMPro.TMP_Text>(true).text);
+            Assert.IsFalse(controller.TryRetryLevel());
+            Assert.IsFalse(bank.TryRetryLevel(SceneManager.GetActiveScene()));
+            Assert.AreEqual(Level, bank.CheckpointScenePath);
+            Assert.AreEqual(0, bank.RemainingCharges);
         }
         [UnityTest] public IEnumerator FailureCallbackOnlyQueuesAndCannotResetInsideTransaction()
         {
             bool callback=false;int resets=0;bool restarted=true;
             bank.NewRunStarted+=()=>resets++;
-            bank.GameOver+=()=>{callback=true;Assert.IsFalse(controller.IsVisible);Assert.AreEqual(0,bank.RemainingCharges);restarted=controller.TryRetryLevel();};
+            bank.GameOver+=()=>{callback=true;Assert.IsFalse(controller.IsVisible);Assert.AreEqual(0,bank.RemainingCharges);restarted=controller.TryRestartRun();};
             while(bank.RemainingCharges>0)bank.TrySpendDash();Assert.IsTrue(callback);Assert.IsFalse(restarted);Assert.AreEqual(0,resets);
             yield return null;Assert.IsTrue(controller.IsVisible);Assert.AreEqual(0,bank.RemainingCharges);
         }
@@ -107,14 +122,14 @@ namespace GameJam.UI.Tests
         [UnityTest] public IEnumerator HeldKeyboardDashAndSubmitMustReleaseBeforeActionsArm()
         {
             InputSystem.QueueStateEvent(keyboard,new KeyboardState(UnityEngine.InputSystem.Key.Space,UnityEngine.InputSystem.Key.Enter));InputSystem.Update();
-            yield return Fail();Assert.IsFalse(controller.InputArmed);Assert.IsFalse(controller.TryRetryLevel());Assert.IsFalse(controller.TryReturnToMainMenu());
+            yield return Fail();Assert.IsFalse(controller.InputArmed);Assert.IsFalse(controller.TryRestartRun());Assert.IsFalse(controller.TryReturnToMainMenu());
             InputSystem.QueueStateEvent(keyboard,new KeyboardState());yield return null;yield return null;
             Assert.IsTrue(controller.InputArmed);Assert.IsFalse(controller.IsNavigating);Assert.AreEqual(0,bank.RemainingCharges);
         }
         [UnityTest] public IEnumerator HeldGamepadFatalDashDoesNotAutoConfirm()
         {
             gamepad=InputSystem.AddDevice<Gamepad>();InputSystem.QueueStateEvent(gamepad,new GamepadState().WithButton(GamepadButton.RightShoulder).WithButton(GamepadButton.South));InputSystem.Update();
-            yield return Fail();Assert.IsFalse(controller.InputArmed);
+            yield return Fail();Assert.IsFalse(controller.InputArmed);Assert.IsFalse(controller.TryRestartRun());
             InputSystem.QueueStateEvent(gamepad,new GamepadState());yield return null;yield return null;Assert.IsTrue(controller.InputArmed);Assert.AreEqual(0,bank.RemainingCharges);
         }
         [UnityTest] public IEnumerator HeldMousePressCannotCarryIntoFailure()
@@ -150,30 +165,112 @@ namespace GameJam.UI.Tests
         }
         [UnityTest] public IEnumerator RestartRestoresBankAndFreezesDepartingPlayer()
         {
-            yield return Fail();int handle=SceneManager.GetActiveScene().handle;var previousController=controller;var oldActions=controller.inputScope.RuntimeActions;
-            Assert.IsTrue(controller.TryRetryLevel());Assert.AreEqual(0,bank.RemainingCharges);Assert.IsTrue(bank.IsGameOver);
-            Assert.IsFalse(body.simulated);Assert.IsFalse(actor.enabled);yield return WaitForLoad(Level,handle);
-            Assert.IsTrue(previousController==null);Assert.IsTrue(oldActions==null);Assert.AreSame(bank,RunDashBank.Instance);
-            Assert.AreEqual(1,Object.FindObjectsByType<RunDashBank>(FindObjectsSortMode.None).Length);
-            Assert.AreEqual(bank.StartingDashCount,bank.RemainingCharges);Assert.IsFalse(bank.IsGameOver);
-            Assert.IsTrue(Object.FindFirstObjectByType<PlayerMovement2D>().enabled);Assert.IsFalse(Object.FindFirstObjectByType<GameOverController>().IsVisible);
+            const string laterLevel = "Assets/Game/Scenes/Levels/Level04.unity";
+            Assert.IsTrue(bank.TrySpendDash());
+            yield return Load(laterLevel);
+            Assert.AreEqual(laterLevel, bank.CheckpointScenePath);
+            Assert.AreEqual(4, bank.CheckpointCharges);
+            yield return Fail();
+            int handle = SceneManager.GetActiveScene().handle;
+            var previousController = controller;
+            var oldActions = controller.inputScope.RuntimeActions;
+            Assert.IsFalse(bank.TryRetryLevel(SceneManager.GetActiveScene()));
+            Assert.IsFalse(controller.TryRetryLevel());
+            Assert.IsTrue(controller.TryRestartRun());
+            Assert.AreEqual(0, bank.RemainingCharges);
+            Assert.IsTrue(bank.IsGameOver);
+            Assert.IsFalse(body.simulated);
+            Assert.IsFalse(actor.enabled);
+            yield return WaitForLoad(NarrativePrologue.ScenePath, handle);
+            Assert.IsTrue(previousController == null);
+            Assert.IsTrue(oldActions == null);
+            Assert.AreSame(bank, RunDashBank.Instance);
+            Assert.AreEqual(1, Object.FindObjectsByType<RunDashBank>(FindObjectsSortMode.None).Length);
+            Assert.AreEqual("", bank.CheckpointScenePath);
+            Assert.AreEqual(0, bank.CheckpointCharges);
+            Assert.AreEqual(5, bank.RemainingCharges);
+            Assert.AreEqual(RunFailureCause.None, bank.FailureCause);
+            Assert.IsFalse(bank.IsGameOver);
+            Assert.IsNull(Object.FindFirstObjectByType<GameOverController>());
+            yield return CompletePrologue();
+            Assert.AreEqual(Level, bank.CheckpointScenePath);
+            Assert.AreEqual(5, bank.CheckpointCharges);
+            Assert.AreEqual(5, bank.RemainingCharges);
+            Assert.IsTrue(Object.FindFirstObjectByType<PlayerMovement2D>().enabled);
+            Assert.IsFalse(Object.FindFirstObjectByType<GameOverController>().IsVisible);
+        }
+
+        private IEnumerator CompletePrologue()
+        {
+            var intro = Object.FindFirstObjectByType<NarrativePrologue>();
+            yield return new WaitUntil(() => intro.InputArmed, TimeSpan.FromSeconds(6),
+                () => Assert.Fail("Prologue did not accept input."));
+            int handle = SceneManager.GetActiveScene().handle;
+            Assert.IsTrue(intro.TrySkip());
+            yield return WaitForLoad(Level, handle);
+        }
+
+        [UnityTest] public IEnumerator HeldSubmitAcrossRestartDoesNotAdvanceThePrologue()
+        {
+            yield return Fail();
+            gamepad = InputSystem.AddDevice<Gamepad>();
+            int handle = SceneManager.GetActiveScene().handle;
+            InputSystem.QueueStateEvent(gamepad, new GamepadState().WithButton(GamepadButton.South));
+            yield return WaitForLoad(NarrativePrologue.ScenePath, handle);
+            var intro = Object.FindFirstObjectByType<NarrativePrologue>();
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(UnityEngine.InputSystem.Key.Enter));
+            yield return new WaitForSecondsRealtime(.35f);
+            Assert.IsTrue(gamepad.buttonSouth.isPressed && keyboard.enterKey.isPressed);
+            Assert.IsFalse(intro.InputArmed);
+            Assert.AreEqual(0, intro.BeatIndex);
+            Assert.IsFalse(intro.IsLeaving);
+            InputSystem.QueueStateEvent(gamepad, new GamepadState());
+            yield return null;
+            yield return null;
+            Assert.IsFalse(intro.InputArmed);
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+            yield return new WaitUntil(() => intro.InputArmed, TimeSpan.FromSeconds(6),
+                () => Assert.Fail("Prologue did not rearm after both controls were released."));
+            Assert.AreEqual(0, intro.BeatIndex);
+            Assert.IsFalse(intro.IsLeaving);
         }
         [UnityTest] public IEnumerator DuplicateAndReentrantRestartCannotLoadTwice()
         {
-            yield return Fail();var old=controller;int resets=0,loads=0;bool reentrant=true;
-            bank.NewRunStarted+=()=>resets++;
-            bank.ChargesChanged+=_=>{if(old!=null)reentrant=old.TryReturnToMainMenu();else reentrant=false;};
-            UnityEngine.Events.UnityAction<Scene,LoadSceneMode> onLoad=(s,m)=>{if(s.path==Level)loads++;};SceneManager.sceneLoaded+=onLoad;
-            int handle=SceneManager.GetActiveScene().handle;Assert.IsTrue(controller.TryRetryLevel());Assert.IsFalse(controller.TryRetryLevel());Assert.IsFalse(controller.TryReturnToMainMenu());
-            yield return WaitForLoad(Level,handle);SceneManager.sceneLoaded-=onLoad;Assert.AreEqual(0,resets);Assert.AreEqual(1,loads);Assert.IsFalse(reentrant);
-        }
-        [UnityTest] public IEnumerator InvalidRestartPreservesFailureAndCanRecover()
-        {
             yield return Fail();
+            int resets = 0, loads = 0;
+            bank.NewRunStarted += () =>
+            {
+                resets++;
+                if (resets == 1) bank.InitializeNewRun(); // The transaction rejects a reentrant reset.
+            };
+            void CountPrologue(Scene scene, LoadSceneMode mode)
+            {
+                if (scene.path == NarrativePrologue.ScenePath) loads++;
+            }
+            SceneManager.sceneLoaded += CountPrologue;
+            try
+            {
+                int handle = SceneManager.GetActiveScene().handle;
+                Assert.IsTrue(controller.TryRestartRun());
+                Assert.IsFalse(controller.TryRestartRun());
+                Assert.IsFalse(controller.TryReturnToMainMenu());
+                Assert.AreEqual(0, resets);
+                yield return WaitForLoad(NarrativePrologue.ScenePath, handle);
+                Assert.AreEqual(1, resets);
+                Assert.AreEqual(1, loads);
+                yield return CompletePrologue();
+                Assert.AreEqual(1, resets);
+                Assert.AreEqual(1, loads);
+            }
+            finally { SceneManager.sceneLoaded -= CountPrologue; }
+        }
+        [UnityTest] public IEnumerator InvalidCheckpointPreservesEnvironmentalFailureAndCanRecover()
+        {
+            yield return FailEnvironmentally();
             var path=typeof(RunDashBank).GetProperty(nameof(RunDashBank.CheckpointScenePath));
             path.SetValue(bank,"Assets/Game/Scenes/Levels/Level99.unity");
             Assert.IsFalse(controller.TryRetryLevel());Assert.IsFalse(controller.IsNavigating);Assert.IsNotEmpty(controller.status.text);
-            Assert.AreEqual(0,bank.RemainingCharges);Assert.IsTrue(bank.IsGameOver);
+            Assert.AreEqual(2,bank.RemainingCharges);Assert.IsTrue(bank.IsGameOver);
             Assert.IsTrue(controller.mainMenuButton.interactable);
             path.SetValue(bank,Level);
             int handle=SceneManager.GetActiveScene().handle;Assert.IsTrue(controller.TryRetryLevel());yield return WaitForLoad(Level,handle);
@@ -187,6 +284,8 @@ namespace GameJam.UI.Tests
             yield return Fail();var old=controller;var actions=controller.inputScope.RuntimeActions;int handle=SceneManager.GetActiveScene().handle;
             Assert.IsTrue(controller.TryReturnToMainMenu());Assert.IsFalse(controller.TryReturnToMainMenu());Assert.IsFalse(controller.TryRetryLevel());yield return WaitForLoad(MenuBuilder.ScenePath,handle);
             Assert.IsTrue(old==null);Assert.IsTrue(actions==null);Assert.IsNull(Object.FindFirstObjectByType<GameOverController>());Assert.AreEqual(0,bank.RemainingCharges);Assert.IsTrue(bank.IsGameOver);
+            Assert.AreEqual(RunFailureCause.MobilityExhaustion, bank.FailureCause);
+            Assert.AreEqual(Level, bank.CheckpointScenePath);
             Assert.AreEqual(1,Object.FindObjectsByType<EventSystem>(FindObjectsSortMode.None).Length);
             var menu=Object.FindFirstObjectByType<MainMenuView>();handle=SceneManager.GetActiveScene().handle;menu.newGameButton.onClick.Invoke();
             yield return WaitForLoad(NarrativePrologue.ScenePath, handle);
@@ -238,7 +337,8 @@ namespace GameJam.UI.Tests
             for(int cycle=0;cycle<3;cycle++)
             {
                 yield return Fail();Assert.AreEqual(1,controller.PresentationCount);Assert.AreEqual(2,BankHandlers("GameOver"));int handle=SceneManager.GetActiveScene().handle;
-                controller.restartButton.onClick.Invoke();yield return WaitForLoad(Level,handle);Refresh();Assert.AreEqual(2,BankHandlers("GameOver"));
+                controller.restartButton.onClick.Invoke();yield return WaitForLoad(NarrativePrologue.ScenePath,handle);
+                yield return CompletePrologue();Refresh();Assert.AreEqual(2,BankHandlers("GameOver"));
                 Assert.AreEqual(1,Object.FindObjectsByType<GameOverController>(FindObjectsSortMode.None).Length);Assert.AreEqual(0,Object.FindObjectsByType<EventSystem>(FindObjectsSortMode.None).Count(e=>e.isActiveAndEnabled));
             }
         }
@@ -256,9 +356,9 @@ namespace GameJam.UI.Tests
         {yield return Load("Assets/Game/Scenes/VerificationDestination.unity");yield return Fail();Assert.AreEqual(1,controller.PresentationCount);Assert.IsFalse(controller.TryRetryLevel());Assert.AreEqual(Level,bank.CheckpointScenePath);}
         [UnityTest] public IEnumerator ExperimentalFailureCannotReuseProductionCheckpoint()
         {
-            yield return Load("Assets/Game/Experiments/SingleScreen/Scenes/SingleScreen32x18.unity");yield return Fail();int handle=SceneManager.GetActiveScene().handle;
+            yield return Load("Assets/Game/Experiments/SingleScreen/Scenes/SingleScreen32x18.unity");yield return FailEnvironmentally();int handle=SceneManager.GetActiveScene().handle;
             controller.restartButton.onClick.Invoke();yield return null;
-            Assert.AreEqual(handle,(int)SceneManager.GetActiveScene().handle);Assert.AreEqual(0,bank.RemainingCharges);
+            Assert.AreEqual(handle,(int)SceneManager.GetActiveScene().handle);Assert.AreEqual(2,bank.RemainingCharges);
             Assert.IsTrue(controller.TryReturnToMainMenu());yield return WaitForLoad(MenuBuilder.ScenePath,handle);
         }
         [Test] public void PresentationPrefabIsReusableAndInitiallyInactive()

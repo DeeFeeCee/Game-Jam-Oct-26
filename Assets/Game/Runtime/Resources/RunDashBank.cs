@@ -102,10 +102,11 @@ namespace GameJam.Resources
             }
         }
 
-        /// <summary>Accept the reload while the failed player and balance are still frozen.</summary>
+        /// <summary>Reload an environmental failure from its checkpoint while the failed player remains frozen.</summary>
         public bool TryRetryLevel(Scene scene)
         {
-            if (Instance != this || !isActiveAndEnabled || notifying || !isGameOver || retryRequested ||
+            if (Instance != this || !isActiveAndEnabled || notifying || !isGameOver ||
+                failureCause != RunFailureCause.Environmental || retryRequested ||
                 CheckpointCharges <= 0 || scene.handle != checkpointSceneHandle ||
                 scene.path != CheckpointScenePath || scene.handle != SceneManager.GetActiveScene().handle ||
                 !IsProductionLevel(CheckpointScenePath))

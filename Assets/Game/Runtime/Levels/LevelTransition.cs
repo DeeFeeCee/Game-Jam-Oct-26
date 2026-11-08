@@ -11,6 +11,7 @@ namespace GameJam.Levels
         [Tooltip("A registered scene path. Empty means this verification destination has no exit.")]
         public string destinationScene;
         public bool TransitionStarted { get; private set; }
+        private bool reportedInvalidDestination;
         public bool CanExit(PlayerMovement2D actor)
         {
             RunDashBank bank = RunDashBank.Instance;
@@ -21,7 +22,16 @@ namespace GameJam.Levels
         }
         public bool TryExit(PlayerMovement2D actor)
         {
-            if (!CanExit(actor)) return false;
+            if (!CanExit(actor))
+            {
+                if (!reportedInvalidDestination && actor != null && actor.isActiveAndEnabled &&
+                    !string.IsNullOrWhiteSpace(destinationScene) && !Application.CanStreamedLevelBeLoaded(destinationScene))
+                {
+                    Debug.LogWarning($"Exit destination is unavailable: {destinationScene}", this);
+                    reportedInvalidDestination = true;
+                }
+                return false;
+            }
             TransitionStarted = true;
             // Once an exit is accepted, prevent further input/spending while its scene unloads.
             actor.ClearInput();

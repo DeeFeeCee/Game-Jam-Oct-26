@@ -45,9 +45,9 @@ namespace GameJam.UI.Editor
                 var content=contentObject.GetComponent<RectTransform>();content.anchorMin=new Vector2(0,1);content.anchorMax=new Vector2(1,1);content.pivot=new Vector2(.5f,1);content.sizeDelta=Vector2.zero;
                 var group=contentObject.GetComponent<UnityEngine.UI.VerticalLayoutGroup>();group.padding=new RectOffset(16,20,12,24);group.spacing=18;group.childControlWidth=group.childControlHeight=true;group.childForceExpandHeight=false;group.childForceExpandWidth=true;
                 contentObject.GetComponent<UnityEngine.UI.ContentSizeFitter>().verticalFit=UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;scroll.content=content;
-                Section("PROJECT TEAM","WORKING ROSTER / NOT FINAL OR COMPLETE","Devin Padin / Jarheadd1\nDeeFeeCee\nAceofHome\nmrdrworm");
+                Section("PROJECT TEAM","WORKING ROSTER / NOT FINAL OR COMPLETE","Devin Padin / Jarheadd1\nDeeFeeCee\nSarah (AceofHome)\nmrdrworm");
                 Section("GAME DEVELOPMENT","PROVISIONAL CONTRIBUTION RECORDS","<b>Devin Padin / Jarheadd1</b>\nGameplay and UI foundation development; technical integration.\n\n<b>DeeFeeCee</b>\nRepository coordination, integration and gameplay mechanics.");
-                Section("ART & ANIMATION","PROVISIONAL CONTRIBUTION RECORDS","<b>AceofHome</b>\nArtwork, animation and narrative collaboration.");
+                Section("ART & ANIMATION","PROVISIONAL CONTRIBUTION RECORDS","<b>Sarah (AceofHome)</b>\nArtwork, animation and narrative collaboration.");
                 Section("LEVEL & PUZZLE DESIGN","PROVISIONAL CONTRIBUTION RECORDS","<b>mrdrworm</b>\nLevel and puzzle design.");
                 Section("TOOLS & TECHNOLOGY","CONFIRMED PROJECT TOOLS","Unity 6000.3.26f1\nC#\nGit\nGitHub");
                 Section("AUDIO & MUSIC","PENDING CONFIRMATION","Contributors, assets and attributions have not yet been confirmed.");

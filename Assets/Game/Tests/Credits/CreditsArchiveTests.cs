@@ -72,9 +72,23 @@ namespace GameJam.UI.Tests
         }
         [UnityTest] public IEnumerator KnownRosterAndOnlyConfirmedToolsAreVisible()
         {
-            view.OpenCredits();string text=Texts();foreach(var token in new[]{"Devin Padin / Jarheadd1","DeeFeeCee","AceofHome","mrdrworm","Unity 6000.3.26f1","C#","Git","GitHub"})StringAssert.Contains(token,text);
+            view.OpenCredits();string text=Texts();foreach(var token in new[]{"Devin Padin / Jarheadd1","DeeFeeCee","Sarah (AceofHome)","mrdrworm","Unity 6000.3.26f1","C#","Git","GitHub"})StringAssert.Contains(token,text);
             foreach(var old in new[]{"Index Code","Canyon Drive","Tinblood","Lux Fracta"})StringAssert.DoesNotContain(old,text);yield return null;
         }
+        [UnityTest] public IEnumerator SarahsCreditIsDisplayedInTheRosterAndArtSection()
+        {
+            view.OpenCredits();
+            Assert.IsTrue(view.CreditsOpen);
+            Canvas.ForceUpdateCanvases();
+            var roster = credits.archive.content.Find("PROJECT TEAMBody").GetComponent<TMPro.TMP_Text>();
+            var art = credits.archive.content.Find("ART & ANIMATIONBody").GetComponent<TMPro.TMP_Text>();
+            CollectionAssert.Contains(roster.text.Split('\n'), "Sarah (AceofHome)");
+            Assert.AreEqual("<b>Sarah (AceofHome)</b>\nArtwork, animation and narrative collaboration.", art.text);
+            art.ForceMeshUpdate();
+            Assert.IsFalse(art.isTextOverflowing);
+            yield return null;
+        }
+
         [UnityTest] public IEnumerator ProvisionalCategoriesAndUnconfirmedSectionsAreMarked()
         {
             view.OpenCredits();string text=Texts();foreach(var token in new[]{"PROJECT TEAM","GAME DEVELOPMENT","ART & ANIMATION","LEVEL & PUZZLE DESIGN","TOOLS & TECHNOLOGY","AUDIO & MUSIC","SPECIAL THANKS","NOT FINAL OR COMPLETE","PENDING CONFIRMATION"})StringAssert.Contains(token,text);yield return null;
