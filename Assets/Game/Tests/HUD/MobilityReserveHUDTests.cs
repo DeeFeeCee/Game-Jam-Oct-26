@@ -132,7 +132,7 @@ namespace GameJam.UI.Tests
         [UnityTest] public IEnumerator RestartReplacesHUDAndRestoresAllocation()
         {
             yield return Fail(); var old = hud; var failure = Object.FindFirstObjectByType<GameOverController>(); int handle = SceneManager.GetActiveScene().handle;
-            Assert.IsTrue(failure.TryRestartRun()); yield return WaitForLoad(Level, handle); Refresh(); AssertDisplay(5);
+            Assert.IsTrue(failure.TryRetryLevel()); yield return WaitForLoad(Level, handle); Refresh(); AssertDisplay(5);
             Assert.IsTrue(old == null); Assert.AreEqual(1, Subscribers("ChargesChanged")); Assert.AreEqual(1, Subscribers("NewRunStarted"));
         }
         [UnityTest] public IEnumerator ExplicitNewRunUpdatesExistingHUDImmediately()
@@ -152,9 +152,10 @@ namespace GameJam.UI.Tests
         }
         [UnityTest] public IEnumerator AcceptedLevelTransitionPreservesBankAndDisplay()
         {
+            const string nextLevel = "Assets/Game/Scenes/Levels/Level02.unity";
             SpendTo(3); var originalBank = bank; var old = hud; int handle = SceneManager.GetActiveScene().handle;
-            var exit = Object.FindFirstObjectByType<LevelTransition>(); Assert.AreEqual(Destination, exit.destinationScene); Assert.IsTrue(exit.TryExit(actor));
-            yield return WaitForLoad(Destination, handle); Refresh(); AssertDisplay(3); Assert.AreSame(originalBank, bank); Assert.IsTrue(old == null);
+            var exit = Object.FindFirstObjectByType<LevelTransition>(); Assert.AreEqual(nextLevel, exit.destinationScene); Assert.IsTrue(exit.TryExit(actor));
+            yield return WaitForLoad(nextLevel, handle); Refresh(); AssertDisplay(3); Assert.AreSame(originalBank, bank); Assert.IsTrue(old == null);
         }
         [UnityTest] public IEnumerator RepeatedSceneLoadsDoNotAccumulateHUDsOrSubscriptions()
         {

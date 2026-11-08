@@ -23,7 +23,7 @@ namespace GameJam.UI.Editor
             var font=AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/Game/UI/TextResources/Resources/Fonts & Materials/LiberationSans SDF.asset");
             if(font==null)throw new InvalidOperationException("Accepted menu font is required; no additional text resources are imported.");
             var root=new GameObject("GameOver");root.SetActive(false);
-            var controller=root.AddComponent<GameOverController>();controller.restartLauncher=root.AddComponent<NewGameLauncher>();
+            var controller=root.AddComponent<GameOverController>();
             var canvasObject=new GameObject("GameOverOverlay",typeof(RectTransform),typeof(Canvas),typeof(UnityEngine.UI.CanvasScaler),typeof(UnityEngine.UI.GraphicRaycaster));
             canvasObject.transform.SetParent(root.transform,false);controller.overlay=canvasObject;
             var canvas=canvasObject.GetComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=100;canvas.pixelPerfect=true;
@@ -36,7 +36,7 @@ namespace GameJam.UI.Editor
             Text(panel,"SecondaryText","Subject failed to meet operational requirements.",18,new Color(.68f,.79f,.8f),.055f,.39f,.68f,.53f);
             var actions=new GameObject("FailureActions",typeof(RectTransform),typeof(UnityEngine.UI.VerticalLayoutGroup));actions.transform.SetParent(panel,false);
             Fit(actions.GetComponent<RectTransform>(),.055f,.065f,.67f,.35f);var layout=actions.GetComponent<UnityEngine.UI.VerticalLayoutGroup>();layout.spacing=12;layout.childControlWidth=layout.childControlHeight=true;layout.childForceExpandWidth=true;layout.childForceExpandHeight=false;
-            controller.restartButton=Button(actions.transform,"RestartRun","RESTART RUN");controller.mainMenuButton=Button(actions.transform,"ReturnToMainMenu","RETURN TO MAIN MENU");
+            controller.restartButton=Button(actions.transform,"RetryLevel","RETRY LEVEL");controller.mainMenuButton=Button(actions.transform,"ReturnToMainMenu","RETURN TO MAIN MENU");
             Navigate(controller.restartButton,controller.restartButton,controller.mainMenuButton);Navigate(controller.mainMenuButton,controller.restartButton,controller.mainMenuButton);
             controller.status=Text(panel,"Status","",12,new Color(.5f,.8f,.78f),.055f,.005f,.70f,.06f);
             var art=Panel(panel,"FailureIllustrationPlaceholder",new Color(.07f,.17f,.21f));Fit(art,.73f,.23f,.95f,.78f);

@@ -12,6 +12,10 @@ namespace GameJam.Movement
         [SerializeField, Min(0f)] private float moveSpeed = 6f;
         [SerializeField, Min(0f)] private float jumpSpeed = 10f;
 
+        [Header("Jump forgiveness (provisional, in seconds)")]
+        [SerializeField, Min(0f)] private float coyoteTime = 0.10f;
+        [SerializeField, Min(0f)] private float jumpBufferTime = 0.08f;
+
         [Header("Ground detection")]
         [SerializeField] private LayerMask groundLayers = ~0;
         [SerializeField, Min(0.001f)] private float groundProbeDistance = 0.06f;
@@ -23,7 +27,9 @@ namespace GameJam.Movement
         private Rigidbody2D body;
         private BoxCollider2D bodyCollider;
         private float horizontalInput;
-        private bool jumpRequested;
+        private double coyoteUntil = double.NegativeInfinity;
+        private double jumpBufferUntil = double.NegativeInfinity;
+        private bool jumpRequestedWithoutBuffer;
 
         public bool IsGrounded { get; private set; }
         public float MoveSpeed => moveSpeed;
@@ -38,6 +44,7 @@ namespace GameJam.Movement
         private void OnEnable()
         {
             ClearInput();
+            coyoteUntil = double.NegativeInfinity;
             ResetDashState();
             ClearSupport();
         }
@@ -47,6 +54,7 @@ namespace GameJam.Movement
             StopDash();
             DashApproval = null;
             ClearInput();
+            coyoteUntil = double.NegativeInfinity;
             IsGrounded = false;
             ClearSupport();
             if (body != null)
@@ -62,34 +70,53 @@ namespace GameJam.Movement
 
         public void RequestJump()
         {
-            if (!IsDashing)
-                jumpRequested = true;
+            if (!isActiveAndEnabled || IsDashing || Time.timeScale == 0f)
+                return;
+            jumpRequestedWithoutBuffer = jumpBufferTime == 0f;
+            jumpBufferUntil = jumpRequestedWithoutBuffer
+                ? double.NegativeInfinity
+                : Time.timeAsDouble + jumpBufferTime;
         }
 
-        public void ClearInput()
+        public void ClearInput(bool preserveBufferedJump = false)
         {
             horizontalInput = 0f;
-            jumpRequested = false;
             dashRequested = false;
+            if (!preserveBufferedJump)
+                ClearJumpBuffer();
+        }
+
+        private void ClearJumpBuffer()
+        {
+            jumpRequestedWithoutBuffer = false;
+            jumpBufferUntil = double.NegativeInfinity;
         }
 
         private void FixedUpdate()
         {
             if (StepDash())
                 return;
+
+            // Both clocks use scaled game time, so Pause cannot age either window.
+            double now = Time.fixedTimeAsDouble;
+            if (IsGrounded)
+                coyoteUntil = now + coyoteTime;
+            bool hasJumpRequest = jumpRequestedWithoutBuffer || now <= jumpBufferUntil;
+            jumpRequestedWithoutBuffer = false;
+
             Vector2 velocity = body.linearVelocity;
             velocity.x = horizontalInput * moveSpeed;
 
-            if (jumpRequested && IsGrounded)
+            if (hasJumpRequest && (IsGrounded || now <= coyoteUntil))
             {
                 velocity.y = jumpSpeed;
                 IsGrounded = false;
+                coyoteUntil = double.NegativeInfinity;
+                ClearJumpBuffer();
                 ClearSupport(); // Jump/dash departure does not inherit platform momentum.
             }
             else ApplySupport(ref velocity);
 
-            // Consume every press once. An airborne press is not saved for landing.
-            jumpRequested = false;
             body.linearVelocity = velocity;
         }
 
@@ -124,6 +151,8 @@ namespace GameJam.Movement
         {
             moveSpeed = Mathf.Max(0f, moveSpeed);
             jumpSpeed = Mathf.Max(0f, jumpSpeed);
+            coyoteTime = Mathf.Max(0f, coyoteTime);
+            jumpBufferTime = Mathf.Max(0f, jumpBufferTime);
             groundProbeDistance = Mathf.Max(0.001f, groundProbeDistance);
             groundProbeInset = Mathf.Max(0f, groundProbeInset);
             ValidateDashSettings();

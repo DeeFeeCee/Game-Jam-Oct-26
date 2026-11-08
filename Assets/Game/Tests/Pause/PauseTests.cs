@@ -123,6 +123,36 @@ namespace GameJam.UI.Tests
             InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.D)); yield return new WaitForFixedUpdate(); yield return new WaitForFixedUpdate();
             Assert.Greater(body.linearVelocity.x, 0);
         }
+        [UnityTest] public IEnumerator PausePreservesTheRemainingBufferOnALandingJump()
+        {
+            body.position = new Vector2(body.position.x, 2.07f);
+            body.linearVelocity = Vector2.down * 4f;
+            yield return new WaitForFixedUpdate();
+            Assert.IsFalse(actor.IsGrounded);
+            actor.RequestJump();
+            yield return Paused();
+            yield return new WaitForSecondsRealtime(.24f);
+            Assert.IsTrue(pause.TryResume());
+            for (int tick = 0; tick < 6 && body.linearVelocity.y <= .5f; tick++) yield return new WaitForFixedUpdate();
+            Assert.AreEqual(actor.JumpSpeed, body.linearVelocity.y, .01f);
+            Assert.AreEqual(5, bank.RemainingCharges);
+        }
+        [UnityTest] public IEnumerator PausePreservesCoyoteTimeAfterLosingSupport()
+        {
+            body.position = new Vector2(body.position.x, 1.81f);
+            yield return new WaitForFixedUpdate();
+            Assert.IsTrue(actor.IsGrounded);
+            body.position += Vector2.up * .3f;
+            yield return new WaitForFixedUpdate();
+            Assert.IsFalse(actor.IsGrounded);
+            yield return Paused();
+            yield return new WaitForSecondsRealtime(.24f);
+            Assert.IsTrue(pause.TryResume());
+            actor.RequestJump();
+            yield return new WaitForFixedUpdate();
+            Assert.AreEqual(actor.JumpSpeed, body.linearVelocity.y, .01f);
+            Assert.AreEqual(5, bank.RemainingCharges);
+        }
         [UnityTest] public IEnumerator DashAndJumpWhilePausedDoNotSpendOrBuffer()
         {
             yield return Paused(); int charges = bank.RemainingCharges;
@@ -228,7 +258,7 @@ namespace GameJam.UI.Tests
             var failure = Object.FindFirstObjectByType<GameOverController>(); Assert.IsTrue(failure.IsVisible); Assert.IsFalse(pause.IsPaused); Assert.AreEqual(1, Time.timeScale);
             Assert.IsFalse(pause.overlay.activeSelf); Assert.IsFalse(pause.TryPause()); Assert.IsFalse(pause.TryResume());
             yield return PressKey(Key.Escape); Assert.IsTrue(failure.IsVisible); Assert.AreEqual(0, bank.RemainingCharges);
-            int handle = SceneManager.GetActiveScene().handle; Assert.IsTrue(failure.TryRestartRun()); yield return WaitForLoad(Level, handle);
+            int handle = SceneManager.GetActiveScene().handle; Assert.IsTrue(failure.TryRetryLevel()); yield return WaitForLoad(Level, handle);
             Refresh(); Assert.AreEqual(1, Time.timeScale); Assert.AreEqual(5, bank.RemainingCharges); Assert.IsTrue(body.simulated);
             Assert.AreEqual(1, Object.FindObjectsByType<PauseController>(FindObjectsSortMode.None).Length);
         }
@@ -246,11 +276,11 @@ namespace GameJam.UI.Tests
             yield return null; yield return null;
             var failure = Object.FindFirstObjectByType<GameOverController>();
             int handle = SceneManager.GetActiveScene().handle;
-            Assert.IsTrue(failure.TryRestartRun());
-            Assert.IsFalse(bank.IsGameOver); // Reset precedes asynchronous replacement of the failed scene.
+            Assert.IsTrue(failure.TryRetryLevel());
+            Assert.IsTrue(bank.IsGameOver); // Preserve the failure lock until the new scene activates.
             bool openedDuringRestart = pause.TryPause();
             yield return WaitForLoad(Level, handle);
-            Assert.IsFalse(openedDuringRestart, "The visible/navigating failure UI must retain priority after the bank reset.");
+            Assert.IsFalse(openedDuringRestart, "The visible/navigating failure UI must retain priority during the retry load.");
             Assert.AreEqual(1, Time.timeScale);
         }
         [UnityTest] public IEnumerator ThreeCyclesDoNotAccumulateUIOrSubscriptions()

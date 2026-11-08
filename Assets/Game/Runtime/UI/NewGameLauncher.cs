@@ -8,7 +8,7 @@ namespace GameJam.UI
     /// <summary>Starts a run and loads its configured entry scene.</summary>
     public sealed class NewGameLauncher : MonoBehaviour
     {
-        [Tooltip("First scene for this route. Restart Run goes straight to Level01.")]
+        [Tooltip("First scene for a genuinely new run.")]
         public string gameplayScene="Assets/Game/Scenes/Levels/Level01.unity";
         [Tooltip("Assign on the Main Menu to start a new bank before entering the prologue.")]
         public RunDashBank initialBankPrefab;

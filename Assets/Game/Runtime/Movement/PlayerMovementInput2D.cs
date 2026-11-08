@@ -20,13 +20,15 @@ namespace GameJam.Movement
         private bool dashAttempted;
         private bool jumpPressed;
         private bool jumpNeedsRelease;
+        private bool pausedForInput;
+        private bool waitForNeutral;
         public event System.Action Activity;
 
         private void Awake() => movement = GetComponent<PlayerMovement2D>();
 
         private void OnEnable()
         {
-            movement.ClearInput();
+            movement.ClearInput(preserveBufferedJump: pausedForInput);
             dashPressed = false;
             dashAttempted = false;
             jumpPressed = false;
@@ -73,6 +75,11 @@ namespace GameJam.Movement
 
         private void Update()
         {
+            if (waitForNeutral)
+            {
+                if (HasHeldControl(move, .01f) || HasHeldControl(jump) || HasHeldControl(dash)) return;
+                waitForNeutral = false;
+            }
             if (jumpNeedsRelease && !HasHeldJumpControl())
             {
                 jumpNeedsRelease = false;
@@ -96,13 +103,28 @@ namespace GameJam.Movement
             dashAttempted = false;
         }
 
-        private void OnJump(InputAction.CallbackContext context) { Activity?.Invoke(); jumpPressed = true; }
-
-        private bool HasHeldJumpControl()
+        public void RequireNeutralInput()
         {
-            foreach (var control in jump.controls)
+            waitForNeutral = true;
+            dashPressed = dashAttempted = jumpPressed = false;
+            if (movement != null) movement.ClearInput();
+        }
+
+        private void OnJump(InputAction.CallbackContext context)
+        {
+            if (waitForNeutral) return;
+            Activity?.Invoke();
+            jumpPressed = true;
+        }
+
+        private bool HasHeldJumpControl() => HasHeldControl(jump);
+
+        private static bool HasHeldControl(InputAction action, float threshold = 0f)
+        {
+            if (action == null) return false;
+            foreach (var control in action.controls)
                 if (control is ButtonControl button ? button.isPressed :
-                    control.IsActuated(InputSystem.settings.defaultButtonPressPoint)) return true;
+                    control.IsActuated(threshold > 0f ? threshold : InputSystem.settings.defaultButtonPressPoint)) return true;
             return false;
         }
 
@@ -126,10 +148,18 @@ namespace GameJam.Movement
         }
         private void OnDash(InputAction.CallbackContext context)
         {
+            if (waitForNeutral) return;
             Activity?.Invoke();
             dashAttempted = true;
             if (!movement.IsDashing)
                 dashPressed = true;
+        }
+
+        public void SetPaused(bool paused)
+        {
+            if (paused) pausedForInput = true;
+            enabled = !paused;
+            if (!paused) pausedForInput = false;
         }
 
         private void OnDisable()
@@ -152,7 +182,7 @@ namespace GameJam.Movement
             jumpPressed = false;
             jumpNeedsRelease = false;
             // A resource gate can disable input before this component's Awake on a failed scene load.
-            if (movement != null) movement.ClearInput();
+            if (movement != null) movement.ClearInput(preserveBufferedJump: pausedForInput);
         }
 
         private void OnApplicationFocus(bool hasFocus)
@@ -162,7 +192,7 @@ namespace GameJam.Movement
                 dashPressed = false;
                 dashAttempted = false;
                 jumpPressed = false;
-                movement.ClearInput();
+                movement.ClearInput(preserveBufferedJump: pausedForInput);
             }
         }
     }

@@ -221,15 +221,15 @@ namespace GameJam.BlueIntegration.Tests
             yield return ObserveEntry(held, before);
         }
 
-        [UnityTest] public IEnumerator NewGameAndRestartKeepCanonicalSceneAndFreshInput()
+        [UnityTest] public IEnumerator VerificationRoomCannotRetryAndNewGameKeepsFreshInput()
         {
             RunDashBank.Instance.TryFailEnvironment();
             yield return null; yield return null;
             var failure = Object.FindFirstObjectByType<GameOverController>();
-            Assert.IsTrue(failure.TryRestartRun());
-            yield return WaitForScene(Level01);
+            Assert.IsFalse(failure.TryRetryLevel());
             Assert.AreEqual(5, RunDashBank.Instance.RemainingCharges);
-            yield return SceneManager.LoadSceneAsync("Assets/Game/Scenes/MainMenu.unity");
+            Assert.IsTrue(failure.TryReturnToMainMenu());
+            yield return WaitForScene("Assets/Game/Scenes/MainMenu.unity");
             yield return QueueKeys(Key.UpArrow, Key.Space);
             var launcher = Object.FindFirstObjectByType<NewGameLauncher>();
             Assert.IsTrue(launcher.TryStartNewGame());

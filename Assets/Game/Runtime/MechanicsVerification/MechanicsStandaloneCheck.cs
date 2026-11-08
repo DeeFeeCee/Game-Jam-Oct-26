@@ -19,7 +19,6 @@ namespace GameJam.MechanicsVerification
     public sealed class MechanicsStandaloneCheck : MonoBehaviour
     {
         private const string ScenePath = "Assets/Game/Scenes/Verification/GameplayMechanicsVerification.unity";
-        private const string CanonicalLevel = "Assets/Game/Scenes/Levels/Level01.unity";
         private PlayerMovement2D player;
         private Rigidbody2D body;
         private Keyboard keyboard;
@@ -122,10 +121,11 @@ namespace GameJam.MechanicsVerification
             Require(Bank.IsGameOver && Bank.FailureCause == RunFailureCause.Environmental && Bank.RemainingCharges == 5 && !body.simulated,"Fall-zone failure incorrect.");
             yield return Capture("03-fall-gameover"); results.WriteLine("Fall zone, actual falling player, preserved five charges and froze: PASS");
             var gameOver = FindFirstObjectByType<GameOverController>();
-            Require(gameOver != null && gameOver.IsVisible && gameOver.InputArmed && gameOver.TryRestartRun(),"Existing Restart Run could not start.");
-            for (int i=0;i<300 && SceneManager.GetActiveScene().path!=CanonicalLevel;i++) yield return null;
-            Require(SceneManager.GetActiveScene().path==CanonicalLevel && Bank.RemainingCharges==5 && !Bank.IsGameOver,"Restart did not restore canonical Level01.");
-            results.WriteLine("Existing Game Over Restart -> canonical Level01 and new run: PASS");
+            Require(gameOver != null && gameOver.IsVisible && gameOver.InputArmed && !gameOver.TryRetryLevel(),
+                "A verification scene must not offer a production retry.");
+            Require(Bank.RemainingCharges == 5 && Bank.IsGameOver && gameOver.mainMenuButton.interactable,
+                "Unavailable retry must preserve the failed balance and menu recovery.");
+            results.WriteLine("Verification scene retry unavailable with menu recovery: PASS");
 
             yield return Load("horizontal rider",new Vector2(4,3.06f));
             var platforms = FindObjectsByType<MovingPlatform2D>(FindObjectsSortMode.None);

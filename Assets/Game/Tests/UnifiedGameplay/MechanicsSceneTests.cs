@@ -58,7 +58,7 @@ namespace GameJam.UnifiedGameplay.Tests
             }
             Assert.IsFalse(SceneDashSettings.AllowsAirDashChaining()); yield return null;
         }
-        [UnityTest] public IEnumerator CrusherFailureUsesExistingRestartWithoutOldHazardRefailure()
+        [UnityTest] public IEnumerator CrusherFailureInVerificationSceneOffersMenuRecovery()
         {
             var player=Object.FindFirstObjectByType<LevelSetup>().Player.GetComponent<PlayerMovement2D>();
             player.GetComponent<PlayerMovementInput2D>().enabled=false;
@@ -66,12 +66,14 @@ namespace GameJam.UnifiedGameplay.Tests
             for(int i=0;i<150 && !RunDashBank.Instance.IsGameOver;i++) yield return new WaitForFixedUpdate();
             Assert.IsTrue(RunDashBank.Instance.IsGameOver); yield return null; yield return null;
             var failure=Object.FindFirstObjectByType<GameOverController>();
-            Assert.IsTrue(failure.IsVisible); Assert.IsTrue(failure.TryRestartRun());
+            Assert.IsTrue(failure.IsVisible); Assert.IsFalse(failure.TryRetryLevel());
+            Assert.IsFalse(player.GetComponent<Rigidbody2D>().simulated);
+            Assert.IsTrue(failure.TryReturnToMainMenu());
             for(int i=0;i<300 && SceneManager.GetActiveScene().path==ScenePath;i++) yield return null;
             yield return new WaitForSeconds(.1f);
-            Assert.AreEqual("Assets/Game/Scenes/Levels/Level01.unity",SceneManager.GetActiveScene().path);
-            Assert.AreEqual(5,RunDashBank.Instance.RemainingCharges); Assert.IsFalse(RunDashBank.Instance.IsGameOver);
-            Assert.IsTrue(Object.FindFirstObjectByType<LevelSetup>().Player.GetComponent<Rigidbody2D>().simulated);
+            Assert.AreEqual("Assets/Game/Scenes/MainMenu.unity",SceneManager.GetActiveScene().path);
+            Assert.AreEqual(5,RunDashBank.Instance.RemainingCharges); Assert.IsTrue(RunDashBank.Instance.IsGameOver);
+            Assert.IsNull(Object.FindFirstObjectByType<LevelSetup>());
         }
     }
 }

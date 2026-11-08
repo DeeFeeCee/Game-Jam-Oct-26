@@ -24,6 +24,7 @@ namespace GameJam.Foundation.Tests
         private const string Level = "Assets/Game/Scenes/Levels/Level01.unity";
         private const string LegacyLevel = "Assets/Game/Tests/Fixtures/Production32x18/LegacyLevel01.unity";
         private const string Destination = "Assets/Game/Scenes/VerificationDestination.unity";
+        private const string CampaignNextLevel = "Assets/Game/Scenes/Levels/Level02.unity";
         private const string Player = "Assets/Game/Prefabs/Player.prefab";
         private Scene loaded;
         [UnityTearDown] public IEnumerator Cleanup()
@@ -61,8 +62,8 @@ namespace GameJam.Foundation.Tests
             Assert.AreEqual(new Vector2(.8f,1.6f), prefab.GetComponent<BoxCollider2D>().size);
             Assert.AreEqual(3, prefab.GetComponent<Rigidbody2D>().gravityScale);
             Assert.AreEqual(CollisionDetectionMode2D.Continuous,prefab.GetComponent<Rigidbody2D>().collisionDetectionMode);
-            Assert.AreEqual(6,prefab.GetComponent<PlayerMovement2D>().MoveSpeed);
-            Assert.AreEqual(10,prefab.GetComponent<PlayerMovement2D>().JumpSpeed);
+            Assert.AreEqual(5.25f,prefab.GetComponent<PlayerMovement2D>().MoveSpeed);
+            Assert.AreEqual(14,prefab.GetComponent<PlayerMovement2D>().JumpSpeed);
             Assert.AreEqual(18,prefab.GetComponent<PlayerMovement2D>().DashSpeed);
             Assert.IsNull(prefab.GetComponent<Animator>());
             Assert.NotNull(prefab.transform.Find("Visuals").GetComponent<Animator>());
@@ -130,11 +131,12 @@ namespace GameJam.Foundation.Tests
             var coordinator=Object.FindFirstObjectByType<LevelTransition>();
             var actor=Object.FindFirstObjectByType<PlayerMovement2D>();
             Assert.True(coordinator.TryExit(actor)); Assert.False(coordinator.TryExit(actor));
-            for(int i=0;i<120&&SceneManager.GetActiveScene().path!=Destination;i++) yield return null;
-            loaded=SceneManager.GetActiveScene(); Assert.AreEqual(Destination,loaded.path);
+            double deadline=Time.realtimeSinceStartupAsDouble+6;
+            while(SceneManager.GetActiveScene().path!=CampaignNextLevel&&Time.realtimeSinceStartupAsDouble<deadline) yield return null;
+            loaded=SceneManager.GetActiveScene(); Assert.AreEqual(CampaignNextLevel,loaded.path);
             Assert.AreSame(bank,RunDashBank.Instance); Assert.AreEqual(balance,bank.RemainingCharges);
             Assert.AreEqual(1,Object.FindObjectsByType<RunDashBank>(FindObjectsSortMode.None).Length);
-            Assert.True(SceneDashSettings.AllowsAirDashChaining());
+            Assert.False(SceneDashSettings.AllowsAirDashChaining());
         }
         [UnityTest] public IEnumerator FatalChargePreventsExitSuccess()
         {

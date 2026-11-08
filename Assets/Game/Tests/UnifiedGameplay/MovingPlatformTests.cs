@@ -93,16 +93,31 @@ namespace GameJam.UnifiedGameplay.Tests
             Platform(new Vector2(20,0)); yield return Rider(); platform.speed = 2; actor.SetHorizontalInput(1);
             float offset = body.position.x-platform.GetComponent<Rigidbody2D>().position.x;
             yield return Ticks(8); Assert.Greater(body.position.x-platform.GetComponent<Rigidbody2D>().position.x, offset+.7f);
-            yield return Ticks(30); Assert.IsFalse(actor.IsGrounded); Assert.AreEqual(6, body.linearVelocity.x, .01f);
+            yield return Ticks(30); Assert.IsFalse(actor.IsGrounded); Assert.AreEqual(actor.MoveSpeed, body.linearVelocity.x, .01f);
             actor.SetHorizontalInput(0); yield return Ticks(2); Assert.AreEqual(0, body.linearVelocity.x, .001f);
         }
         [UnityTest] public IEnumerator JumpAndDashLeaveSupportWithAcceptedRules()
         {
             Platform(new Vector2(10,0)); yield return Rider(); platform.speed = 2; yield return Ticks(5);
             actor.RequestJump(); yield return new WaitForFixedUpdate();
-            Assert.IsFalse(actor.IsGrounded); Assert.AreEqual(10, body.linearVelocity.y, .7f); Assert.AreEqual(0, body.linearVelocity.x, .01f);
+            Assert.IsFalse(actor.IsGrounded); Assert.AreEqual(actor.JumpSpeed, body.linearVelocity.y, .7f); Assert.AreEqual(0, body.linearVelocity.x, .01f);
             actor.RequestDash(Vector2.up); yield return new WaitForFixedUpdate(); Assert.IsTrue(actor.IsDashing);
             Assert.AreEqual(4, RunDashBank.Instance.RemainingCharges); Assert.AreEqual(0, body.linearVelocity.x, .01f);
+        }
+        [UnityTest] public IEnumerator CoyoteJumpAfterWalkingOffMovingSupportUsesNormalLaunchVelocity()
+        {
+            Platform(new Vector2(20, 0));
+            yield return Rider();
+            platform.speed = 2;
+            actor.SetHorizontalInput(1);
+            for (int tick = 0; tick < 45 && actor.IsGrounded; tick++) yield return new WaitForFixedUpdate();
+            Assert.IsFalse(actor.IsGrounded);
+            yield return new WaitForFixedUpdate();
+            actor.RequestJump();
+            yield return new WaitForFixedUpdate();
+            Assert.AreEqual(actor.MoveSpeed, body.linearVelocity.x, .01f);
+            Assert.AreEqual(actor.JumpSpeed, body.linearVelocity.y, .7f);
+            Assert.AreEqual(5, RunDashBank.Instance.RemainingCharges);
         }
         [UnityTest] public IEnumerator PauseAndFailureStopMotion()
         {
