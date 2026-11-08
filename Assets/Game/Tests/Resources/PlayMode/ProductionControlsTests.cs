@@ -83,6 +83,47 @@ namespace GameJam.Resources.Tests
             Press(); yield return null; Press(Key.UpArrow,Key.Space); yield return new WaitForSeconds(.06f);
             Assert.IsFalse(movement.IsDashing); Assert.AreEqual(3,bank.RemainingCharges); Assert.AreEqual(0,body.linearVelocity.y,.01f);
         }
+        [UnityTest] public IEnumerator BlockedDashClearsAnEarlierBufferedJumpWithoutSpending()
+        {
+            Solid("Floor", new Vector2(0, -.5f), new Vector2(12, 1));
+            body.position = new Vector2(0, 1.08f);
+            body.linearVelocity = Vector2.zero;
+            Physics2D.SyncTransforms();
+            movement.RequestJump();
+            yield return new WaitForFixedUpdate();
+            Assert.IsFalse(movement.IsGrounded);
+            // Add the flush surface after buffering, before contact can separate the body.
+            Solid("Flush wall", new Vector2(body.position.x + .5f, 2), new Vector2(.2f, 4));
+            Physics2D.SyncTransforms();
+            movement.RequestDash(Vector2.right);
+            body.linearVelocity = Vector2.down * 12f;
+            yield return new WaitForFixedUpdate();
+            Assert.IsFalse(movement.IsDashing);
+            for (int tick = 0; tick < 3; tick++) yield return new WaitForFixedUpdate();
+            Assert.IsTrue(movement.IsGrounded);
+            Assert.AreEqual(0, body.linearVelocity.y, .01f);
+            Assert.AreEqual(4, bank.RemainingCharges);
+        }
+        [UnityTest] public IEnumerator ShortDashOffSupportDoesNotRefreshOrCarryCoyoteTime()
+        {
+            Solid("Short platform", new Vector2(0, -.5f), new Vector2(1, 1));
+            body.position = new Vector2(.65f, .81f);
+            var tuning = new UnityEditor.SerializedObject(movement);
+            tuning.FindProperty("dashDuration").floatValue = .04f;
+            tuning.ApplyModifiedPropertiesWithoutUndo();
+            yield return Ground();
+            Assert.IsTrue(movement.IsGrounded);
+            movement.RequestDash(Vector2.right);
+            yield return new WaitForFixedUpdate();
+            Assert.IsTrue(movement.IsDashing);
+            movement.RequestJump();
+            yield return Finish();
+            Assert.IsFalse(movement.IsGrounded);
+            movement.RequestJump();
+            yield return new WaitForFixedUpdate();
+            Assert.AreEqual(0, body.linearVelocity.y, .01f);
+            Assert.AreEqual(3, bank.RemainingCharges);
+        }
         [UnityTest] public IEnumerator DownArrowAndSpaceAimDownward()
         { EnableControls(); Press(Key.DownArrow,Key.Space); yield return new WaitForSeconds(.06f); Assert.AreEqual(Vector2.down,movement.DashDirection); }
         [UnityTest] public IEnumerator WAndSpaceAimUpward()

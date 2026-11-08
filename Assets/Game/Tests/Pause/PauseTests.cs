@@ -123,6 +123,36 @@ namespace GameJam.UI.Tests
             InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.D)); yield return new WaitForFixedUpdate(); yield return new WaitForFixedUpdate();
             Assert.Greater(body.linearVelocity.x, 0);
         }
+        [UnityTest] public IEnumerator PausePreservesTheRemainingBufferOnALandingJump()
+        {
+            body.position = new Vector2(body.position.x, 2.07f);
+            body.linearVelocity = Vector2.down * 4f;
+            yield return new WaitForFixedUpdate();
+            Assert.IsFalse(actor.IsGrounded);
+            actor.RequestJump();
+            yield return Paused();
+            yield return new WaitForSecondsRealtime(.24f);
+            Assert.IsTrue(pause.TryResume());
+            for (int tick = 0; tick < 6 && body.linearVelocity.y <= .5f; tick++) yield return new WaitForFixedUpdate();
+            Assert.AreEqual(actor.JumpSpeed, body.linearVelocity.y, .01f);
+            Assert.AreEqual(5, bank.RemainingCharges);
+        }
+        [UnityTest] public IEnumerator PausePreservesCoyoteTimeAfterLosingSupport()
+        {
+            body.position = new Vector2(body.position.x, 1.81f);
+            yield return new WaitForFixedUpdate();
+            Assert.IsTrue(actor.IsGrounded);
+            body.position += Vector2.up * .3f;
+            yield return new WaitForFixedUpdate();
+            Assert.IsFalse(actor.IsGrounded);
+            yield return Paused();
+            yield return new WaitForSecondsRealtime(.24f);
+            Assert.IsTrue(pause.TryResume());
+            actor.RequestJump();
+            yield return new WaitForFixedUpdate();
+            Assert.AreEqual(actor.JumpSpeed, body.linearVelocity.y, .01f);
+            Assert.AreEqual(5, bank.RemainingCharges);
+        }
         [UnityTest] public IEnumerator DashAndJumpWhilePausedDoNotSpendOrBuffer()
         {
             yield return Paused(); int charges = bank.RemainingCharges;

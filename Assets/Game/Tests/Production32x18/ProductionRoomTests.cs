@@ -210,6 +210,29 @@ namespace GameJam.LevelAuthoring.Tests
             Assert.IsFalse(SceneDashSettings.AllowsAirDashChaining());
         }
 
+        [UnityTest] public IEnumerator BufferedJumpDoesNotCrossAnAuthoredExit()
+        {
+            yield return Load();
+            var bank = RunDashBank.Instance;
+            var oldActor = actor;
+            var body = actor.GetComponent<Rigidbody2D>();
+            body.position += Vector2.up * .3f;
+            yield return new WaitForFixedUpdate();
+            Assert.IsFalse(actor.IsGrounded);
+            actor.RequestJump();
+            Assert.IsTrue(Object.FindFirstObjectByType<LevelTransition>().TryExit(actor));
+            Assert.IsFalse(body.simulated);
+            yield return AwaitScene(Destination);
+            var replacement = Object.FindFirstObjectByType<PlayerMovement2D>();
+            var replacementBody = replacement.GetComponent<Rigidbody2D>();
+            for (int tick = 0; tick < 8; tick++) yield return new WaitForFixedUpdate();
+            Assert.IsTrue(oldActor == null);
+            Assert.IsTrue(replacement.IsGrounded);
+            Assert.AreEqual(0, replacementBody.linearVelocity.y, .05f);
+            Assert.AreSame(bank, RunDashBank.Instance);
+            Assert.AreEqual(5, bank.RemainingCharges);
+        }
+
         [UnityTest] public IEnumerator FinalChargeHasNoTravelAndCannotCompleteProductionExit()
         {
             yield return Load(); var bank = RunDashBank.Instance;

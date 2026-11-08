@@ -72,6 +72,7 @@ namespace GameJam.Movement
             if (dashRequested)
             {
                 dashRequested = false;
+                ClearJumpBuffer(); // Dash intent wins over an earlier buffered jump, even if rejected.
                 Vector2 direction = ResolveDashDirection(requestedDashInput);
                 bool eligible = enableDash && body.simulated && bodyCollider.enabled &&
                     (!dashUsedSinceGrounding || SceneDashSettings.AllowsAirDashChaining());
@@ -94,6 +95,7 @@ namespace GameJam.Movement
                         finishDashNextTick = false;
                         IsDashing = true;
                         dashUsedSinceGrounding = true;
+                        coyoteUntil = double.NegativeInfinity;
                         ClearSupport();
                     }
                 }
@@ -102,7 +104,6 @@ namespace GameJam.Movement
             if (!IsDashing)
                 return false;
 
-            jumpRequested = false;
             IsGrounded = false;
             float stepSeconds = Mathf.Min(Time.fixedDeltaTime, dashSecondsLeft);
             float requestedDistance = dashSpeed * stepSeconds;

@@ -20,6 +20,7 @@ namespace GameJam.Movement
         private bool dashAttempted;
         private bool jumpPressed;
         private bool jumpNeedsRelease;
+        private bool pausedForInput;
         private bool waitForNeutral;
         public event System.Action Activity;
 
@@ -27,7 +28,7 @@ namespace GameJam.Movement
 
         private void OnEnable()
         {
-            movement.ClearInput();
+            movement.ClearInput(preserveBufferedJump: pausedForInput);
             dashPressed = false;
             dashAttempted = false;
             jumpPressed = false;
@@ -154,6 +155,13 @@ namespace GameJam.Movement
                 dashPressed = true;
         }
 
+        public void SetPaused(bool paused)
+        {
+            if (paused) pausedForInput = true;
+            enabled = !paused;
+            if (!paused) pausedForInput = false;
+        }
+
         private void OnDisable()
         {
             if (jump != null)
@@ -174,7 +182,7 @@ namespace GameJam.Movement
             jumpPressed = false;
             jumpNeedsRelease = false;
             // A resource gate can disable input before this component's Awake on a failed scene load.
-            if (movement != null) movement.ClearInput();
+            if (movement != null) movement.ClearInput(preserveBufferedJump: pausedForInput);
         }
 
         private void OnApplicationFocus(bool hasFocus)
@@ -184,7 +192,7 @@ namespace GameJam.Movement
                 dashPressed = false;
                 dashAttempted = false;
                 jumpPressed = false;
-                movement.ClearInput();
+                movement.ClearInput(preserveBufferedJump: pausedForInput);
             }
         }
     }

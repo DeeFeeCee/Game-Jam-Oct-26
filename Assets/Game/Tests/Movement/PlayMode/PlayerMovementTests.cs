@@ -217,17 +217,123 @@ namespace GameJam.Movement.Tests
         }
 
         [UnityTest]
-        public IEnumerator WalkingOffAnEdgeRemovesJumpEligibility()
+        public IEnumerator WalkingOffAnEdgeAllowsOneJumpOnlyInsideCoyoteTime()
         {
             Solid("Small Platform", new Vector2(0f, -0.5f), new Vector2(2f, 1f));
+            player.GetComponent<PlayerMovementInput2D>().enabled = false;
             yield return WaitForGround();
-            Keys(Key.D);
-            yield return new WaitForSeconds(0.35f);
+            yield return WalkOffPlatform();
+            yield return FixedTicks(2);
+            movement.RequestJump();
+            yield return new WaitForFixedUpdate();
+            Assert.That(body.linearVelocity.y, Is.EqualTo(movement.JumpSpeed).Within(.7f));
             Assert.That(movement.IsGrounded, Is.False);
+            float jumpSpeedAfterLaunch = body.linearVelocity.y;
+            movement.RequestJump();
+            yield return new WaitForFixedUpdate();
+            Assert.That(body.linearVelocity.y, Is.LessThan(jumpSpeedAfterLaunch), "Coyote time cannot be spent twice.");
+
+            movement.ClearInput();
+            body.position = new Vector2(0, 1);
+            body.linearVelocity = Vector2.zero;
+            yield return WaitForGround();
+            yield return WalkOffPlatform();
+            yield return FixedTicks(6);
             float fallingSpeed = body.linearVelocity.y;
-            Keys(Key.UpArrow);
-            yield return new WaitForSeconds(0.1f);
-            Assert.That(body.linearVelocity.y, Is.LessThan(fallingSpeed));
+            movement.RequestJump();
+            yield return new WaitForFixedUpdate();
+            Assert.That(body.linearVelocity.y, Is.LessThan(fallingSpeed), "The same press after 0.10s must not interrupt falling.");
+        }
+
+        [UnityTest]
+        public IEnumerator EarlyJumpPressExecutesOnLandingWithinBuffer()
+        {
+            Floor();
+            player.GetComponent<PlayerMovementInput2D>().enabled = false;
+            body.position = new Vector2(0, 1.09f);
+            body.linearVelocity = Vector2.down * 5f;
+            Assert.IsFalse(movement.IsGrounded);
+            movement.RequestJump();
+            yield return ObserveLandingJump();
+        }
+
+        [UnityTest]
+        public IEnumerator ExpiredBufferDoesNotJumpOnALaterLanding()
+        {
+            Floor();
+            player.GetComponent<PlayerMovementInput2D>().enabled = false;
+            body.position = new Vector2(0, 2.0f);
+            movement.RequestJump();
+            yield return FixedTicks(5);
+            Assert.IsFalse(movement.IsGrounded, "The buffer must expire before this landing.");
+            yield return WaitForGround();
+            yield return FixedTicks(3);
+            Assert.IsTrue(movement.IsGrounded);
+            Assert.That(body.linearVelocity.y, Is.EqualTo(0f).Within(.05f));
+        }
+
+        [UnityTest]
+        public IEnumerator KeyboardAndGamepadBothBufferOneLandingJump()
+        {
+            Floor();
+            gamepad = InputSystem.AddDevice<Gamepad>();
+            for (int device = 0; device < 2; device++)
+            {
+                body.gravityScale = 0;
+                body.position = new Vector2(0, 1.03f);
+                body.linearVelocity = Vector2.zero;
+                yield return new WaitForFixedUpdate();
+                Assert.IsFalse(movement.IsGrounded);
+                if (device == 0)
+                    Keys(Key.W);
+                else
+                    InputSystem.QueueStateEvent(gamepad, new GamepadState().WithButton(GamepadButton.South));
+                yield return null;
+                yield return new WaitForFixedUpdate();
+                Assert.AreEqual(0f, body.linearVelocity.y, .01f, "Pressing Jump in the air must wait for ground.");
+                body.linearVelocity = Vector2.down * 9f;
+                yield return ObserveLandingJump();
+                Keys();
+                InputSystem.QueueStateEvent(gamepad, new GamepadState());
+                yield return null;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator DisablingInputOrMovementDiscardsPendingLandingJump()
+        {
+            Floor();
+            var input = player.GetComponent<PlayerMovementInput2D>();
+            for (int component = 0; component < 2; component++)
+            {
+                body.position = new Vector2(0, 1.12f);
+                body.linearVelocity = Vector2.down * 4f;
+                yield return new WaitForFixedUpdate();
+                Assert.IsFalse(movement.IsGrounded);
+                movement.RequestJump();
+                if (component == 0) { input.enabled = false; input.enabled = true; }
+                else { movement.enabled = false; movement.enabled = true; }
+                yield return WaitForGround();
+                yield return FixedTicks(2);
+                Assert.IsTrue(movement.IsGrounded);
+                Assert.That(body.linearVelocity.y, Is.EqualTo(0f).Within(.05f));
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator ZeroForgivenessStillAllowsAnImmediateGroundJump()
+        {
+            Floor();
+            var settings = new SerializedObject(movement);
+            Assert.AreEqual(.10f, settings.FindProperty("coyoteTime").floatValue);
+            Assert.AreEqual(.08f, settings.FindProperty("jumpBufferTime").floatValue);
+            settings.FindProperty("coyoteTime").floatValue = 0;
+            settings.FindProperty("jumpBufferTime").floatValue = 0;
+            settings.ApplyModifiedPropertiesWithoutUndo();
+            yield return WaitForGround();
+            movement.RequestJump();
+            yield return new WaitForFixedUpdate();
+            Assert.That(body.linearVelocity.y, Is.EqualTo(movement.JumpSpeed).Within(.7f));
         }
 
         [UnityTest]
@@ -354,6 +460,28 @@ namespace GameJam.Movement.Tests
                     yield break;
             }
             Assert.Fail("Player did not become grounded within 120 physics ticks.");
+        }
+
+        private IEnumerator WalkOffPlatform()
+        {
+            movement.SetHorizontalInput(1);
+            for (int tick = 0; tick < 30 && movement.IsGrounded; tick++)
+                yield return new WaitForFixedUpdate();
+            Assert.IsFalse(movement.IsGrounded);
+            movement.SetHorizontalInput(0);
+        }
+
+        private IEnumerator ObserveLandingJump()
+        {
+            for (int tick = 0; tick < 8 && body.linearVelocity.y <= .5f; tick++)
+                yield return new WaitForFixedUpdate();
+            Assert.That(body.linearVelocity.y, Is.EqualTo(movement.JumpSpeed).Within(.7f));
+            Assert.IsFalse(movement.IsGrounded);
+        }
+
+        private static IEnumerator FixedTicks(int count)
+        {
+            for (int tick = 0; tick < count; tick++) yield return new WaitForFixedUpdate();
         }
     }
 }

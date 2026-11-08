@@ -201,6 +201,38 @@ namespace GameJam.UI.Tests
             Assert.AreEqual(2,BankHandlers("GameOver"));yield return Fail();int handle=SceneManager.GetActiveScene().handle;controller.TryReturnToMainMenu();yield return WaitForLoad(MenuBuilder.ScenePath,handle);
             Assert.AreEqual(0,BankHandlers("GameOver"));Assert.AreEqual(0,BankHandlers("ChargesChanged"));Assert.AreEqual(0,BankHandlers("NewRunStarted"));
         }
+        [UnityTest] public IEnumerator DeathAndReloadDiscardBufferedJumpAndRequireFreshHeldInput()
+        {
+            var oldActor = actor;
+            body.position += Vector2.up * .3f;
+            yield return new WaitForFixedUpdate();
+            Assert.IsFalse(actor.IsGrounded);
+            actor.RequestJump();
+            Assert.IsTrue(bank.TryFailEnvironment());
+            yield return null; yield return null;
+            Assert.IsFalse(oldActor.isActiveAndEnabled);
+            Assert.IsFalse(body.simulated);
+            // A request made while dead must also be ignored.
+            oldActor.RequestJump();
+            Assert.IsTrue(controller.IsVisible && controller.InputArmed);
+            int handle = SceneManager.GetActiveScene().handle;
+            controller.restartButton.onClick.Invoke();
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(UnityEngine.InputSystem.Key.W));
+            yield return WaitForLoad(Level, handle);
+            var replacement = Object.FindFirstObjectByType<PlayerMovement2D>();
+            var replacementBody = replacement.GetComponent<Rigidbody2D>();
+            for (int tick = 0; tick < 9; tick++) yield return new WaitForFixedUpdate();
+            Assert.IsTrue(oldActor == null);
+            Assert.IsTrue(keyboard.wKey.isPressed);
+            Assert.IsTrue(replacement.IsGrounded);
+            Assert.AreEqual(0, replacementBody.linearVelocity.y, .05f);
+            Assert.AreEqual(5, bank.RemainingCharges);
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+            yield return null; yield return null;
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(UnityEngine.InputSystem.Key.W));
+            yield return new WaitForSeconds(.06f);
+            Assert.Greater(replacementBody.linearVelocity.y, 1f);
+        }
         [UnityTest] public IEnumerator ThreeFailureRestartCyclesDoNotAccumulateObjectsOrListeners()
         {
             for(int cycle=0;cycle<3;cycle++)

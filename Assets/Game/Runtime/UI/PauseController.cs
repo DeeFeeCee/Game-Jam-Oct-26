@@ -105,10 +105,9 @@ namespace GameJam.UI
             if (bank == null || !bank.isActiveAndEnabled) return false;
             IsPaused = true;
             InputArmed = false;
-            // Disabling only the input component clears pending discrete requests. In particular,
-            // movement.OnDisable is NOT called: an in-flight dash retains its timer and gravity.
+            // Suspend controls without clearing an earlier jump buffer or stopping an in-flight dash.
             foreach (var input in Object.FindObjectsByType<PlayerMovementInput2D>(FindObjectsSortMode.None))
-                if (input.isActiveAndEnabled) { heldInputs.Add(input); input.enabled = false; }
+                if (input.isActiveAndEnabled) { heldInputs.Add(input); input.SetPaused(true); }
             ClearPlayerRequests();
             Time.timeScale = 0f;
             SuspendOtherUI();
@@ -150,7 +149,7 @@ namespace GameJam.UI
             IsNavigating = true;
             SetButtons(false); status.text = loadingPrompt;
             Time.timeScale = 1f;
-            ClearPlayerRequests();
+            ClearPlayerRequests(preserveBufferedJump: false);
             // Keep input suspended until the old scene unloads. Never initialize a run here.
             SceneManager.LoadSceneAsync(mainMenuScene, LoadSceneMode.Single);
             return true;
@@ -164,14 +163,15 @@ namespace GameJam.UI
             heldInputs.Clear(); // The bank's failure link owns the frozen actors now.
         }
 
-        private void ClearPlayerRequests()
+        private void ClearPlayerRequests(bool preserveBufferedJump = true)
         {
-            foreach (var actor in Object.FindObjectsByType<PlayerMovement2D>(FindObjectsSortMode.None)) actor.ClearInput();
+            foreach (var actor in Object.FindObjectsByType<PlayerMovement2D>(FindObjectsSortMode.None))
+                actor.ClearInput(preserveBufferedJump);
         }
         private void RestorePlayerInputs()
         {
             ClearPlayerRequests();
-            if (!FailureHasPriority()) foreach (var input in heldInputs) if (input != null) input.enabled = true;
+            if (!FailureHasPriority()) foreach (var input in heldInputs) if (input != null) input.SetPaused(false);
             heldInputs.Clear(); WaitingForGameplayRelease = false;
         }
         private void Hide()
@@ -219,7 +219,7 @@ namespace GameJam.UI
             toggleRequested = backRequested = false;
             if (!focused)
             {
-                ClearPlayerRequests();
+                ClearPlayerRequests(preserveBufferedJump: IsPaused || WaitingForGameplayRelease);
                 if (IsPaused) { InputArmed = false; inputScope.enabled = false; SetButtons(false); status.text = releasePrompt; }
             }
         }
