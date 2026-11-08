@@ -171,10 +171,19 @@ namespace GameJam.UI.Tests
                 .GetComponent<MainMenuView>().credits.archive.content;
             foreach (var heading in new[] { "GAME DEVELOPMENT", "ART & ANIMATION", "LEVEL & PUZZLE DESIGN" })
                 StringAssert.Contains(archive.Find(heading + "Body").GetComponent<TMP_Text>().text, credits.text);
-            foreach (var name in new[] { "Devin Padin / Jarheadd1", "DeeFeeCee", "AceofHome", "mrdrworm" })
+            foreach (var name in new[] { "Devin Padin / Jarheadd1", "DeeFeeCee", "Sarah (AceofHome)", "mrdrworm" })
                 StringAssert.Contains(name, credits.text);
             Assert.NotNull(credits.font);
             Assert.AreSame(credits.font, Field<TMP_Text>("reveal").font);
+        }
+
+        [UnityTest] public IEnumerator CinematicRollDisplaysSarahsFullCredit()
+        {
+            yield return LoadEnding();
+            yield return Until(() => ending.CurrentStage == EndingSequence.Stage.Credits, "Cinematic credits are active");
+            var credits = Field<TMP_Text>("credits");
+            Assert.IsTrue(credits.gameObject.activeInHierarchy);
+            StringAssert.Contains("<b>Sarah (AceofHome)</b>\nArtwork, animation and narrative collaboration.", credits.text);
         }
 
         [UnityTest] public IEnumerator EndingRunsAtZeroTimeScaleWithoutGameplayOrBankOwners()
