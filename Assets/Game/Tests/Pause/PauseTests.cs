@@ -228,7 +228,7 @@ namespace GameJam.UI.Tests
             var failure = Object.FindFirstObjectByType<GameOverController>(); Assert.IsTrue(failure.IsVisible); Assert.IsFalse(pause.IsPaused); Assert.AreEqual(1, Time.timeScale);
             Assert.IsFalse(pause.overlay.activeSelf); Assert.IsFalse(pause.TryPause()); Assert.IsFalse(pause.TryResume());
             yield return PressKey(Key.Escape); Assert.IsTrue(failure.IsVisible); Assert.AreEqual(0, bank.RemainingCharges);
-            int handle = SceneManager.GetActiveScene().handle; Assert.IsTrue(failure.TryRestartRun()); yield return WaitForLoad(Level, handle);
+            int handle = SceneManager.GetActiveScene().handle; Assert.IsTrue(failure.TryRetryLevel()); yield return WaitForLoad(Level, handle);
             Refresh(); Assert.AreEqual(1, Time.timeScale); Assert.AreEqual(5, bank.RemainingCharges); Assert.IsTrue(body.simulated);
             Assert.AreEqual(1, Object.FindObjectsByType<PauseController>(FindObjectsSortMode.None).Length);
         }
@@ -246,11 +246,11 @@ namespace GameJam.UI.Tests
             yield return null; yield return null;
             var failure = Object.FindFirstObjectByType<GameOverController>();
             int handle = SceneManager.GetActiveScene().handle;
-            Assert.IsTrue(failure.TryRestartRun());
-            Assert.IsFalse(bank.IsGameOver); // Reset precedes asynchronous replacement of the failed scene.
+            Assert.IsTrue(failure.TryRetryLevel());
+            Assert.IsTrue(bank.IsGameOver); // Preserve the failure lock until the new scene activates.
             bool openedDuringRestart = pause.TryPause();
             yield return WaitForLoad(Level, handle);
-            Assert.IsFalse(openedDuringRestart, "The visible/navigating failure UI must retain priority after the bank reset.");
+            Assert.IsFalse(openedDuringRestart, "The visible/navigating failure UI must retain priority during the retry load.");
             Assert.AreEqual(1, Time.timeScale);
         }
         [UnityTest] public IEnumerator ThreeCyclesDoNotAccumulateUIOrSubscriptions()

@@ -20,6 +20,7 @@ namespace GameJam.Movement
         private bool dashAttempted;
         private bool jumpPressed;
         private bool jumpNeedsRelease;
+        private bool waitForNeutral;
         public event System.Action Activity;
 
         private void Awake() => movement = GetComponent<PlayerMovement2D>();
@@ -73,6 +74,11 @@ namespace GameJam.Movement
 
         private void Update()
         {
+            if (waitForNeutral)
+            {
+                if (HasHeldControl(move, .01f) || HasHeldControl(jump) || HasHeldControl(dash)) return;
+                waitForNeutral = false;
+            }
             if (jumpNeedsRelease && !HasHeldJumpControl())
             {
                 jumpNeedsRelease = false;
@@ -96,13 +102,28 @@ namespace GameJam.Movement
             dashAttempted = false;
         }
 
-        private void OnJump(InputAction.CallbackContext context) { Activity?.Invoke(); jumpPressed = true; }
-
-        private bool HasHeldJumpControl()
+        public void RequireNeutralInput()
         {
-            foreach (var control in jump.controls)
+            waitForNeutral = true;
+            dashPressed = dashAttempted = jumpPressed = false;
+            if (movement != null) movement.ClearInput();
+        }
+
+        private void OnJump(InputAction.CallbackContext context)
+        {
+            if (waitForNeutral) return;
+            Activity?.Invoke();
+            jumpPressed = true;
+        }
+
+        private bool HasHeldJumpControl() => HasHeldControl(jump);
+
+        private static bool HasHeldControl(InputAction action, float threshold = 0f)
+        {
+            if (action == null) return false;
+            foreach (var control in action.controls)
                 if (control is ButtonControl button ? button.isPressed :
-                    control.IsActuated(InputSystem.settings.defaultButtonPressPoint)) return true;
+                    control.IsActuated(threshold > 0f ? threshold : InputSystem.settings.defaultButtonPressPoint)) return true;
             return false;
         }
 
@@ -126,6 +147,7 @@ namespace GameJam.Movement
         }
         private void OnDash(InputAction.CallbackContext context)
         {
+            if (waitForNeutral) return;
             Activity?.Invoke();
             dashAttempted = true;
             if (!movement.IsDashing)

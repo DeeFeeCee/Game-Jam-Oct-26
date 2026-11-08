@@ -1,3 +1,4 @@
+using GameJam.Movement;
 using GameJam.Resources;
 using UnityEngine;
 
@@ -18,6 +19,15 @@ namespace GameJam.Levels
             if (RunDashBank.Instance == null) Instantiate(bankPrefab); // Dedicated root, not a child of this level.
             Player = Instantiate(playerPrefab, spawn.position, Quaternion.identity);
             if (levelCamera != null) levelCamera.target = Player.transform;
+        }
+
+        private void Start()
+        {
+            var bank = RunDashBank.Instance;
+            if (bank == null || Player == null) return;
+            if (bank.IsRetryEntry(gameObject.scene) && Player.TryGetComponent(out PlayerMovementInput2D input))
+                input.RequireNeutralInput();
+            bank.RecordLevelEntry(gameObject.scene);
         }
     }
 }

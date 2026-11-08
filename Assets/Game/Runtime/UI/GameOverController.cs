@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using GameJam.Movement;
 using GameJam.Resources;
 using TMPro;
 using UnityEngine;
@@ -10,7 +9,6 @@ namespace GameJam.UI
 {
     public sealed class GameOverController : MonoBehaviour
     {
-        public NewGameLauncher restartLauncher;
         public string mainMenuScene="Assets/Game/Scenes/MainMenu.unity";
         public GameObject overlay;
         public EventSystem uiEventSystem;
@@ -23,7 +21,7 @@ namespace GameJam.UI
         [Header("Editable interface messages")]
         public string releasePrompt="Release controls to continue.";
         public string loadingPrompt="Loading...";
-        public string restartUnavailable="Restart Run is unavailable. Check its configured destination.";
+        public string retryUnavailable="Retry Level is unavailable. You can return to the Main Menu.";
         public string menuUnavailable="Main menu destination is unavailable.";
         public bool IsVisible {get;private set;}
         public bool InputArmed {get;private set;}
@@ -78,17 +76,14 @@ namespace GameJam.UI
         private void FocusRestart()
         {uiEventSystem.SetSelectedGameObject(null);uiEventSystem.SetSelectedGameObject(restartButton.gameObject);}
         private bool CanAct()=>IsVisible&&InputArmed&&!IsNavigating&&bank!=null&&bank.IsGameOver;
-        private void Restart()=>TryRestartRun();
+        private void Restart()=>TryRetryLevel();
         private void MainMenu()=>TryReturnToMainMenu();
-        public bool TryRestartRun()
+        public bool TryRetryLevel()
         {
             if(!CanAct())return false;
             IsNavigating=true;SetNavigationState(true);
-            if(!restartLauncher.TryStartNewGame())
-            {IsNavigating=false;status.text=restartUnavailable;SetNavigationState(false);return false;}
-            // InitializeNewRun can restore the old player through accepted bank listeners.
-            // Keep that departing actor frozen until the new level bootstrap creates its replacement.
-            FreezeDepartingPlayers();return true;
+            if(bank.TryRetryLevel(gameObject.scene))return true;
+            IsNavigating=false;SetNavigationState(false);status.text=retryUnavailable;return false;
         }
         public bool TryReturnToMainMenu()
         {
@@ -102,15 +97,6 @@ namespace GameJam.UI
         {
             restartButton.interactable=mainMenuButton.interactable=!loading;
             if(loading)status.text=loadingPrompt;
-        }
-        private static void FreezeDepartingPlayers()
-        {
-            foreach(var link in Object.FindObjectsByType<PlayerDashBankLink>(FindObjectsSortMode.None))
-            {
-                var movement=link.GetComponent<PlayerMovement2D>();movement.ClearInput();movement.enabled=false;
-                var input=link.GetComponent<PlayerMovementInput2D>();if(input!=null)input.enabled=false;
-                var body=link.GetComponent<Rigidbody2D>();body.linearVelocity=Vector2.zero;body.simulated=false;
-            }
         }
         private void SuspendOtherUI()
         {

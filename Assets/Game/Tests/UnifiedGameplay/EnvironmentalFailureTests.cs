@@ -99,7 +99,7 @@ namespace GameJam.UnifiedGameplay.Tests
         {
             bank.TryFailEnvironment(); yield return null; yield return null;
             int old = SceneManager.GetActiveScene().handle;
-            Assert.IsTrue(Object.FindFirstObjectByType<GameOverController>().TryRestartRun());
+            Assert.IsTrue(Object.FindFirstObjectByType<GameOverController>().TryRetryLevel());
             for (int i = 0; i < 300 && SceneManager.GetActiveScene().handle == old; i++) yield return null;
             Assert.AreNotEqual(old, SceneManager.GetActiveScene().handle);
             Assert.AreEqual("Assets/Game/Scenes/Levels/Level01.unity", SceneManager.GetActiveScene().path);

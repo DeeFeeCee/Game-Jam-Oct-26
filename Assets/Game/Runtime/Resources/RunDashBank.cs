@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace GameJam.Resources
 {
@@ -14,12 +15,16 @@ namespace GameJam.Resources
         [SerializeField, HideInInspector] private bool isGameOver;
         [SerializeField, HideInInspector] private RunFailureCause failureCause;
         private bool notifying;
+        private int checkpointSceneHandle;
+        private bool retryRequested;
 
         public static RunDashBank Instance { get; private set; }
         public int StartingDashCount => startingDashCount;
         public int RemainingCharges => remainingCharges;
         public bool IsGameOver => isGameOver;
         public RunFailureCause FailureCause => failureCause;
+        public string CheckpointScenePath { get; private set; } = "";
+        public int CheckpointCharges { get; private set; }
 
         public event Action<int> ChargesChanged;
         public event Action GameOver;
@@ -51,8 +56,11 @@ namespace GameJam.Resources
         [ContextMenu("Initialize New Run (Prototype)")]
         public void InitializeNewRun()
         {
-            if (!Application.isPlaying || Instance != this || notifying)
+            if (!Application.isPlaying || Instance != this || notifying || retryRequested)
                 return;
+            CheckpointScenePath = "";
+            CheckpointCharges = 0;
+            checkpointSceneHandle = 0;
             remainingCharges = Mathf.Max(1, startingDashCount);
             isGameOver = false;
             failureCause = RunFailureCause.None;
@@ -63,6 +71,66 @@ namespace GameJam.Resources
                 ChargesChanged?.Invoke(remainingCharges);
             }
             finally { notifying = false; }
+        }
+
+        public bool IsRetryEntry(Scene scene) => retryRequested && scene.path == CheckpointScenePath &&
+            scene.handle != checkpointSceneHandle;
+
+        /// <summary>Called by the production level setup after scene activation, before the first gameplay update.</summary>
+        public void RecordLevelEntry(Scene scene)
+        {
+            if (Instance != this || !isActiveAndEnabled || notifying ||
+                scene.handle != SceneManager.GetActiveScene().handle || !IsProductionLevel(scene.path))
+                return;
+
+            if (IsRetryEntry(scene))
+            {
+                retryRequested = false;
+                checkpointSceneHandle = scene.handle;
+                remainingCharges = CheckpointCharges;
+                isGameOver = false;
+                failureCause = RunFailureCause.None;
+                notifying = true;
+                try { ChargesChanged?.Invoke(remainingCharges); }
+                finally { notifying = false; }
+            }
+            else if (!retryRequested && !isGameOver && scene.handle != checkpointSceneHandle)
+            {
+                CheckpointScenePath = scene.path;
+                CheckpointCharges = remainingCharges;
+                checkpointSceneHandle = scene.handle;
+            }
+        }
+
+        /// <summary>Accept the reload while the failed player and balance are still frozen.</summary>
+        public bool TryRetryLevel(Scene scene)
+        {
+            if (Instance != this || !isActiveAndEnabled || notifying || !isGameOver || retryRequested ||
+                CheckpointCharges <= 0 || scene.handle != checkpointSceneHandle ||
+                scene.path != CheckpointScenePath || scene.handle != SceneManager.GetActiveScene().handle ||
+                !IsProductionLevel(CheckpointScenePath))
+                return false;
+
+            retryRequested = true;
+            try
+            {
+                if (SceneManager.LoadSceneAsync(CheckpointScenePath, LoadSceneMode.Single) != null)
+                    return true;
+            }
+            catch (ArgumentException) { /* The scene became unavailable after validation. */ }
+            retryRequested = false;
+            return false;
+        }
+
+        private static bool IsProductionLevel(string path)
+        {
+            const string prefix = "Assets/Game/Scenes/Levels/Level";
+            return path != null && path.Length == prefix.Length + 8 &&
+                path.StartsWith(prefix, StringComparison.Ordinal) &&
+                path[prefix.Length] >= '0' && path[prefix.Length] <= '9' &&
+                path[prefix.Length + 1] >= '0' && path[prefix.Length + 1] <= '9' &&
+                path.EndsWith(".unity", StringComparison.Ordinal) &&
+                SceneUtility.GetBuildIndexByScenePath(path) >= 0 && Application.CanStreamedLevelBeLoaded(path);
         }
 
         /// <summary>One eligible request spends one charge. The final spend is fatal, not movement approval.</summary>

@@ -132,7 +132,7 @@ namespace GameJam.UI.Tests
         [UnityTest] public IEnumerator RestartReplacesHUDAndRestoresAllocation()
         {
             yield return Fail(); var old = hud; var failure = Object.FindFirstObjectByType<GameOverController>(); int handle = SceneManager.GetActiveScene().handle;
-            Assert.IsTrue(failure.TryRestartRun()); yield return WaitForLoad(Level, handle); Refresh(); AssertDisplay(5);
+            Assert.IsTrue(failure.TryRetryLevel()); yield return WaitForLoad(Level, handle); Refresh(); AssertDisplay(5);
             Assert.IsTrue(old == null); Assert.AreEqual(1, Subscribers("ChargesChanged")); Assert.AreEqual(1, Subscribers("NewRunStarted"));
         }
         [UnityTest] public IEnumerator ExplicitNewRunUpdatesExistingHUDImmediately()
