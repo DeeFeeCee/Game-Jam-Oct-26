@@ -201,4 +201,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad7b56db30a75784b953c28e36f4068e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GameJam.Mechanics::GameJam.Mechanics.TurretProjectile2D
-  lifetime: 5
+  lifetime: 8

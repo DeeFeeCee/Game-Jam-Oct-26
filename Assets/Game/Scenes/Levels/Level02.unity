@@ -989,6 +989,14 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4617029716739941562, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
+      propertyPath: m_Size.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4617029716739941562, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
+      propertyPath: m_Offset.y
+      value: 0.25
+      objectReference: {fileID: 0}
     - target: {fileID: 4645232728843644166, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
       propertyPath: m_Enabled
       value: 0
@@ -2132,8 +2140,8 @@ Camera:
   m_LensShift: {x: 0, y: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
-    x: 0.2308984
-    y: 0.2055465
+    x: 0.38958856
+    y: -0.039151713
     width: 0.5373635
     height: 0.5872757
   near clip plane: 0.3

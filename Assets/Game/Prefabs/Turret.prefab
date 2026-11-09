@@ -51,9 +51,9 @@ MonoBehaviour:
   muzzle: {fileID: 5983512615172756785}
   firingDirection: {x: -1, y: 0}
   aimAtPlayer: 0
-  shotInterval: 0.5
-  initialDelay: 0.5
-  projectileSpeed: 5
+  shotInterval: 0.75
+  initialDelay: 1
+  projectileSpeed: 3
   automaticActivation: 1
 --- !u!1 &2182020541201777609
 GameObject:

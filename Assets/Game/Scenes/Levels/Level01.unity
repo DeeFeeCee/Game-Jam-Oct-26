@@ -139,6 +139,14 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4617029716739941562, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
+      propertyPath: m_Size.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4617029716739941562, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
+      propertyPath: m_Offset.y
+      value: 0.25
+      objectReference: {fileID: 0}
     - target: {fileID: 4645232728843644166, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
       propertyPath: m_Enabled
       value: 0
@@ -1161,6 +1169,14 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4617029716739941562, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
+      propertyPath: m_Size.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4617029716739941562, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
+      propertyPath: m_Offset.y
+      value: 0.25
+      objectReference: {fileID: 0}
     - target: {fileID: 4645232728843644166, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
       propertyPath: m_Enabled
       value: 0
@@ -1174,8 +1190,12 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7849963544119057316, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 7849963544119057316, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 23.5
+      value: 23
       objectReference: {fileID: 0}
     - target: {fileID: 7849963544119057316, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1668,6 +1688,14 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4617029716739941562, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
+      propertyPath: m_Size.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4617029716739941562, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
+      propertyPath: m_Offset.y
+      value: 0.25
+      objectReference: {fileID: 0}
     - target: {fileID: 4645232728843644166, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
       propertyPath: m_Enabled
       value: 0
@@ -1862,6 +1890,14 @@ PrefabInstance:
     - target: {fileID: 2392289370035289811, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
       propertyPath: m_Enabled
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4617029716739941562, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
+      propertyPath: m_Size.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4617029716739941562, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
+      propertyPath: m_Offset.y
+      value: 0.25
       objectReference: {fileID: 0}
     - target: {fileID: 4645232728843644166, guid: 63f6c68a4eb703149a49f4661223cdf3, type: 3}
       propertyPath: m_Enabled
@@ -2141,10 +2177,10 @@ Camera:
   m_LensShift: {x: 0, y: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
-    x: 0
-    y: 0.125
-    width: 1
-    height: 0.75000006
+    x: 0.2308984
+    y: 0.2055465
+    width: 0.5373635
+    height: 0.5872757
   near clip plane: 0.3
   far clip plane: 1000
   field of view: 60
