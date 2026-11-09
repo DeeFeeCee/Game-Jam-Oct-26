@@ -50,7 +50,7 @@ namespace GameJam.UI.Editor
                 Section("ART & ANIMATION","PROVISIONAL CONTRIBUTION RECORDS","<b>Sarah (AceofHome)</b>\nArtwork, animation and narrative collaboration.");
                 Section("LEVEL & PUZZLE DESIGN","PROVISIONAL CONTRIBUTION RECORDS","<b>mrdrworm</b>\nLevel and puzzle design.");
                 Section("TOOLS & TECHNOLOGY","CONFIRMED PROJECT TOOLS","Unity 6000.3.26f1\nC#\nGit\nGitHub");
-                Section("AUDIO & MUSIC","PENDING CONFIRMATION","Contributors, assets and attributions have not yet been confirmed.");
+                Section("AUDIO & MUSIC","CONFIRMED CONTRIBUTION","<b>DeeFeeCee</b>\nMusic & Sound FX");
                 Section("SPECIAL THANKS","PENDING CONFIRMATION","Acknowledgments will be added after team confirmation.");
                 var barRect=Panel(scrollObject.transform,"ArchiveScrollbar",new Color(.06f,.15f,.19f));Fit(barRect,.975f,0,1,1);barRect.GetComponent<UnityEngine.UI.Image>().raycastTarget=true;
                 var sliding=new GameObject("SlidingArea",typeof(RectTransform));sliding.transform.SetParent(barRect,false);Fit(sliding.GetComponent<RectTransform>(),0,0,1,1);

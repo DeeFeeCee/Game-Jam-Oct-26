@@ -10,9 +10,8 @@ namespace GameJam.LevelAuthoring.Editor
     {
         public const string ArtName = "Blue platform art";
         public const float ArtScale = 5f; // Ace's 100 PPU / production 20 effective PPU.
-        public static Sprite TilingSprite(Sprite source)
+        public static Sprite TilingSprite(Sprite source, string folder = "Assets/Game/Art/BluePlatformAdapters")
         {
-            const string folder = "Assets/Game/Art/BluePlatformAdapters";
             string path = folder + "/" + source.name + ".asset";
             var existing = AssetDatabase.LoadAssetAtPath<Sprite>(path);
             if (existing != null) return existing;
@@ -43,10 +42,20 @@ namespace GameJam.LevelAuthoring.Editor
             var art = platform.transform.Find(ArtName)?.GetComponent<SpriteRenderer>();
             if (art == null || art.sprite == null) return;
             var box = platform.GetComponent<BoxCollider2D>();
-            float height = Mathf.Min(box.size.y, art.sprite.rect.height / 20f);
-            art.transform.localScale = Vector3.one * ArtScale;
+            FitToSurface(art, box, fillHeight: false);
+        }
+
+        public static void FitToSurface(SpriteRenderer art, BoxCollider2D box, bool fillHeight)
+        {
+            const float targetPixelsPerUnit = 20f;
+            var inherited = box.transform.lossyScale;
+            float worldScale = art.sprite.pixelsPerUnit / targetPixelsPerUnit;
+            var localScale = new Vector3(worldScale / Mathf.Abs(inherited.x), worldScale / Mathf.Abs(inherited.y), worldScale);
+            float localSpriteHeight = art.sprite.rect.height / (targetPixelsPerUnit * Mathf.Abs(inherited.y));
+            float height = fillHeight ? box.size.y : Mathf.Min(box.size.y, localSpriteHeight);
+            art.transform.localScale = localScale;
             art.transform.localPosition = new Vector3(box.offset.x, box.offset.y + (box.size.y - height) / 2f, 0);
-            art.size = new Vector2(box.size.x / ArtScale, height / ArtScale);
+            art.size = new Vector2(box.size.x / localScale.x, height / localScale.y);
         }
     }
 }

@@ -66,13 +66,16 @@ namespace GameJam.LevelAuthoring.Tests
             Assert.AreEqual(position, Camera.main.transform.position);
         }
 
-        [UnityTest] public IEnumerator AllNineSolidsMatchAuthoredBoundsInsideTheRoom()
+        [UnityTest] public IEnumerator OriginalRoomBoundsRemainAndOnlyTheDecorativeTerminalIsDisabled()
         {
             yield return Load(); var solids = Solids(); Assert.AreEqual(9, solids.Length);
+            Assert.AreEqual(8, solids.Count(solid => solid.enabled));
+            Assert.IsFalse(solids.Single(solid => solid.name == "Terminal placeholder").enabled);
             foreach (var solid in solids)
             {
-                Assert.That(solid.bounds.min.x, Is.InRange(0f, 32f)); Assert.That(solid.bounds.max.x, Is.InRange(0f, 32f));
-                Assert.That(solid.bounds.min.y, Is.InRange(0f, 18f)); Assert.That(solid.bounds.max.y, Is.InRange(0f, 18f));
+                var bounds = AuthoredBounds(solid);
+                Assert.That(bounds.min.x, Is.InRange(0f, 32f)); Assert.That(bounds.max.x, Is.InRange(0f, 32f));
+                Assert.That(bounds.min.y, Is.InRange(0f, 18f)); Assert.That(bounds.max.y, Is.InRange(0f, 18f));
             }
             var authored = new[]
             {
@@ -88,7 +91,7 @@ namespace GameJam.LevelAuthoring.Tests
             };
             foreach (var (name, center, size) in authored)
             {
-                var bounds = solids.Single(s => s.name == name).bounds;
+                var bounds = AuthoredBounds(solids.Single(s => s.name == name));
                 AssertBoundsXY(center, bounds.center, name);
                 AssertBoundsXY(size, bounds.size, name);
             }
@@ -99,17 +102,18 @@ namespace GameJam.LevelAuthoring.Tests
             yield return Load();
             foreach (var solid in Solids())
             {
+                var bounds = AuthoredBounds(solid);
                 var art = solid.transform.Find("Floor visuals").GetComponent<SpriteRenderer>();
                 var frame = solid.transform.Find("Gameplay surface frame");
                 var backing = frame.Find("Backing").GetComponent<SpriteRenderer>();
                 var top = frame.Find("Top").GetComponent<SpriteRenderer>();
                 // Sprite bounds include renderer depth; only XY bounds participate in 2D collision.
-                AssertBoundsXY(solid.bounds.center, art.bounds.center, solid.name);
-                AssertBoundsXY(solid.bounds.size, art.bounds.size, solid.name);
-                AssertBoundsXY(solid.bounds.center, backing.bounds.center, solid.name);
-                AssertBoundsXY(solid.bounds.size, backing.bounds.size, solid.name);
+                AssertBoundsXY(bounds.center, art.bounds.center, solid.name);
+                AssertBoundsXY(bounds.size, art.bounds.size, solid.name);
+                AssertBoundsXY(bounds.center, backing.bounds.center, solid.name);
+                AssertBoundsXY(bounds.size, backing.bounds.size, solid.name);
                 Assert.AreEqual(.05f * Mathf.Abs(solid.transform.lossyScale.y), top.bounds.size.y, .001f, solid.name);
-                Assert.AreEqual(solid.bounds.max.y, top.bounds.max.y, .001f, solid.name);
+                Assert.AreEqual(bounds.max.y, top.bounds.max.y, .001f, solid.name);
                 Assert.Greater(top.color.grayscale, backing.color.grayscale + .5f);
                 Assert.IsEmpty(frame.GetComponentsInChildren<Collider2D>());
             }
@@ -169,13 +173,10 @@ namespace GameJam.LevelAuthoring.Tests
             actor.RequestJump();
             yield return MoveRightTo(7.7f);
             yield return LandAt(4, "first platform");
+            yield return MoveRightTo(11.22f);
+            Assert.IsTrue(actor.IsGrounded, "The first platform edge must still support the jump.");
             actor.RequestJump();
-            yield return MoveRightTo(9.0f);
-            yield return LandAt(6.05f, "terminal top");
-            yield return MoveRightTo(9.72f);
-            Assert.IsTrue(actor.IsGrounded, "The terminal edge must still support the jump.");
-            actor.RequestJump();
-            yield return MoveRightTo(14.7f);
+            yield return MoveRightTo(14.65f);
             yield return LandAt(7, "middle platform");
             yield return MoveRightTo(16.68f);
             Assert.IsTrue(actor.IsGrounded, "The middle platform edge must still support the jump.");
@@ -346,6 +347,15 @@ namespace GameJam.LevelAuthoring.Tests
 
         private static BoxCollider2D[] Solids() => Object.FindObjectsByType<BoxCollider2D>(FindObjectsSortMode.None)
             .Where(c => !c.isTrigger && c.attachedRigidbody == null).ToArray();
+
+        private static Bounds AuthoredBounds(BoxCollider2D shape)
+        {
+            if (shape.enabled) return shape.bounds;
+            Assert.AreEqual("Terminal placeholder", shape.name);
+            var center = shape.transform.TransformPoint(shape.offset);
+            var size = Vector2.Scale(shape.size, shape.transform.lossyScale);
+            return new Bounds(center, size);
+        }
 
         private static void AssertBoundsXY(Vector2 expected, Vector2 actual, string name)
         {

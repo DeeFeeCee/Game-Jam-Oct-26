@@ -177,6 +177,35 @@ namespace GameJam.UI.Tests
             Assert.AreSame(credits.font, Field<TMP_Text>("reveal").font);
         }
 
+        [UnityTest]
+        public IEnumerator CinematicRollFullyDisplaysDeesConfirmedAudioCredit()
+        {
+            const string audio = "<b>AUDIO & MUSIC</b>\n\n<b>DeeFeeCee</b>\nMusic & Sound FX";
+            yield return LoadEnding();
+            var credits = Field<TMP_Text>("credits");
+            var viewport = Field<RectTransform>("creditsViewport");
+            StringAssert.Contains("<b>DeeFeeCee</b>\nRepository coordination, integration and gameplay mechanics.", credits.text);
+            Assert.IsTrue(credits.text.EndsWith(audio, StringComparison.Ordinal));
+            int audioStart = credits.text.Length - audio.Length;
+
+            yield return Until(() => ending.CurrentStage == EndingSequence.Stage.Credits, "Credits start");
+            credits.ForceMeshUpdate();
+            Assert.IsFalse(credits.isTextOverflowing);
+            Assert.LessOrEqual(credits.textBounds.size.x, credits.rectTransform.rect.width);
+            var characters = credits.textInfo.characterInfo.Take(credits.textInfo.characterCount)
+                .Where(character => character.isVisible && character.index >= audioStart).ToArray();
+            Assert.IsNotEmpty(characters);
+            yield return Until(() =>
+            {
+                var toViewport = viewport.worldToLocalMatrix * credits.rectTransform.localToWorldMatrix;
+                return ending.CurrentStage == EndingSequence.Stage.Credits && characters.All(character =>
+                    viewport.rect.Contains(toViewport.MultiplyPoint3x4(character.bottomLeft)) &&
+                    viewport.rect.Contains(toViewport.MultiplyPoint3x4(character.topRight)));
+            }, "The complete audio credit scrolls into view");
+            yield return Ready();
+            Assert.AreEqual(1f, ending.CreditsProgress);
+        }
+
         [UnityTest] public IEnumerator CinematicRollDisplaysSarahsFullCredit()
         {
             yield return LoadEnding();
