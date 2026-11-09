@@ -129,6 +129,8 @@ MonoBehaviour:
   dashCollisionSkin: 0.01
   moveSpeed: 5.25
   jumpSpeed: 14
+  coyoteTime: 0.075
+  jumpBufferTime: 0.08
   groundLayers:
     serializedVersion: 2
     m_Bits: 4294967295
