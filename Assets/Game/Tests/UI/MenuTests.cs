@@ -110,6 +110,37 @@ namespace GameJam.UI.Tests
             yield return null; yield return null;
         }
 
+        [UnityTest]
+        public IEnumerator CorporateLogoAnimatesAndLoopsWithoutInterceptingMenuInput()
+        {
+            var panel = view.mainPanel.transform.Find("IllustrationPanelPlaceholder");
+            Assert.AreEqual("PROMISE BEACON BIOMEDICAL GROUP", panel.Find("PanelLabel").GetComponent<TMPro.TMP_Text>().text);
+            Assert.AreEqual("PBBG", panel.Find("PanelFooter").GetComponent<TMPro.TMP_Text>().text);
+            Assert.IsFalse(panel.Find("LogoPlaceholder").gameObject.activeSelf);
+            var logos = panel.GetComponentsInChildren<Animator>(true);
+            Assert.AreEqual(1, logos.Length);
+            var animator = logos[0];
+            var image = animator.GetComponent<UnityEngine.UI.Image>();
+            Assert.IsFalse(image.transform.parent.GetComponent<UnityEngine.UI.Image>().enabled);
+            Assert.IsTrue(image.preserveAspect);
+            Assert.IsFalse(image.raycastTarget);
+            Assert.AreEqual(view.newGameButton.gameObject, EventSystem.current.currentSelectedGameObject);
+            var first = image.sprite;
+            Assert.IsNotNull(first);
+            float initialCycle = animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
+            yield return new WaitUntil(() => image.sprite != first, System.TimeSpan.FromSeconds(5),
+                () => Assert.Fail("Corporate logo did not advance a frame."));
+            yield return new WaitUntil(() => animator.GetCurrentAnimatorStateInfo(0).normalizedTime > initialCycle + 1f,
+                System.TimeSpan.FromSeconds(5), () => Assert.Fail("Corporate logo did not complete a loop."));
+            Assert.IsNotNull(image.sprite);
+
+            yield return Click(view.controlsButton);
+            Assert.IsTrue(view.ControlsOpen);
+            yield return Press(Key.Escape);
+            Assert.IsFalse(view.ControlsOpen);
+            Assert.AreEqual(view.controlsButton.gameObject, EventSystem.current.currentSelectedGameObject);
+        }
+
         [UnityTest] public IEnumerator SceneContainsRequiredInteractiveComponents()
         {
             Assert.AreEqual(1,Object.FindObjectsByType<EventSystem>(FindObjectsSortMode.None).Length);

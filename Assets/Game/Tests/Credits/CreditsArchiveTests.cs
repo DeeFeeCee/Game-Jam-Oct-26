@@ -89,6 +89,31 @@ namespace GameJam.UI.Tests
             yield return null;
         }
 
+        [UnityTest]
+        public IEnumerator DeeKeepsDevelopmentCreditAndHasConfirmedAudioCredit()
+        {
+            view.OpenCredits();
+            var content = credits.archive.content;
+            var development = content.Find("GAME DEVELOPMENTBody").GetComponent<TMPro.TMP_Text>();
+            StringAssert.Contains("<b>DeeFeeCee</b>\nRepository coordination, integration and gameplay mechanics.", development.text);
+            var audio = content.Find("AUDIO & MUSICBody").GetComponent<TMPro.TMP_Text>();
+            Assert.AreEqual("<b>DeeFeeCee</b>\nMusic & Sound FX", audio.text);
+            Assert.AreEqual("CONFIRMED CONTRIBUTION", content.Find("AUDIO & MUSICRecord").GetComponent<TMPro.TMP_Text>().text);
+
+            Canvas.ForceUpdateCanvases();
+            credits.archive.verticalNormalizedPosition = 0f;
+            yield return null;
+            audio.ForceMeshUpdate();
+            Assert.IsFalse(audio.isTextOverflowing);
+            Assert.LessOrEqual(audio.textBounds.size.x, audio.rectTransform.rect.width);
+            var viewport = credits.archive.viewport;
+            var corners = new Vector3[4];
+            audio.rectTransform.GetWorldCorners(corners);
+            Assert.IsTrue(viewport.rect.Contains(viewport.InverseTransformPoint(corners[0])));
+            Assert.IsTrue(viewport.rect.Contains(viewport.InverseTransformPoint(corners[2])));
+            Assert.IsTrue(credits.returnButton.IsInteractable());
+        }
+
         [UnityTest] public IEnumerator ProvisionalCategoriesAndUnconfirmedSectionsAreMarked()
         {
             view.OpenCredits();string text=Texts();foreach(var token in new[]{"PROJECT TEAM","GAME DEVELOPMENT","ART & ANIMATION","LEVEL & PUZZLE DESIGN","TOOLS & TECHNOLOGY","AUDIO & MUSIC","SPECIAL THANKS","NOT FINAL OR COMPLETE","PENDING CONFIRMATION"})StringAssert.Contains(token,text);yield return null;
