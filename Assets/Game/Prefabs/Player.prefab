@@ -108,7 +108,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.8, y: 1.6}
+  m_Size: {x: 0.5, y: 1.6}
   m_EdgeRadius: 0
 --- !u!114 &6084655203162842451
 MonoBehaviour:
@@ -127,7 +127,7 @@ MonoBehaviour:
   dashDuration: 0.2
   dashDirectionDeadZone: 0.2
   dashCollisionSkin: 0.01
-  moveSpeed: 5.25
+  moveSpeed: 5.375
   jumpSpeed: 14
   coyoteTime: 0.075
   jumpBufferTime: 0.08
