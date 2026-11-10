@@ -20,6 +20,7 @@ namespace GameJam.UI.Editor
         public const string ScenePath="Assets/Game/Scenes/MainMenu.unity";
         public const string PrefabPath="Assets/Game/UI/Prefabs/MainMenu.prefab";
         public const string ButtonPath="Assets/Game/UI/Prefabs/MenuButton.prefab";
+        internal const string ProductionMenuFontPath = "Assets/Game/UI/Fonts/DeeFont1.17 SDF.asset";
         private static TMP_FontAsset font;
         private static bool batchRequest;
         private static readonly Color Background=new Color(.025f,.055f,.095f);
@@ -60,9 +61,12 @@ namespace GameJam.UI.Editor
             }
             font=AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(textRoot+"/Resources/Fonts & Materials/LiberationSans SDF.asset");
             if(font==null) throw new InvalidOperationException("TMP font resource not ready.");
+            var menuFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(ProductionMenuFontPath);
+            if (menuFont == null) throw new InvalidOperationException("DeeFont is required for the production Main Menu.");
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene,NewSceneMode.Single);
             var template=Button(null,"MenuButton","BUTTON");
             PrefabUtility.SaveAsPrefabAsset(template.gameObject,ButtonPath);Object.DestroyImmediate(template.gameObject);
+            font = menuFont;
 
             var root=new GameObject("MainMenu");root.SetActive(false);
             var launcher=root.AddComponent<NewGameLauncher>();var view=root.AddComponent<MainMenuView>();view.launcher=launcher;
@@ -152,7 +156,11 @@ namespace GameJam.UI.Editor
         private static UnityEngine.UI.Button InstanceButton(Transform parent,string name,string label)
         {
             var go=(GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(ButtonPath),parent);go.name=name;
-            go.GetComponentInChildren<TMP_Text>().text=label;return go.GetComponent<UnityEngine.UI.Button>();
+            var text = go.GetComponentInChildren<TMP_Text>();
+            text.text = label;
+            text.font = font;
+            text.fontSharedMaterial = font.material;
+            return go.GetComponent<UnityEngine.UI.Button>();
         }
         private static void Link(UnityEngine.UI.Button button,UnityEngine.UI.Button up,UnityEngine.UI.Button down)
         {var nav=new UnityEngine.UI.Navigation{mode=UnityEngine.UI.Navigation.Mode.Explicit,selectOnUp=up,selectOnDown=down};button.navigation=nav;}

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Linq;
 using GameJam.LevelAuthoring.Editor;
 using GameJam.Levels;
+using GameJam.Mechanics;
 using GameJam.Movement;
 using GameJam.Presentation;
 using GameJam.Resources;
@@ -23,6 +24,274 @@ namespace GameJam.LevelAuthoring.Tests
     {
         private const string Destination = "Assets/Game/Scenes/Levels/Level02.unity";
         private PlayerMovement2D actor;
+        private const string Level05 = "Assets/Game/Scenes/Levels/Level05.unity";
+        private const string Level11 = "Assets/Game/Scenes/Levels/Level11.unity";
+        private const string Level12 = "Assets/Game/Scenes/Levels/Level12.unity";
+
+        private static readonly (string Source, string Destination, EnvironmentZone Zone)[] CampaignRoute =
+        {
+            ("Level01", "Level02", EnvironmentZone.Blue),
+            ("Level02", "Level03", EnvironmentZone.Blue),
+            ("Level03", "Level04", EnvironmentZone.Blue),
+            ("Level04", "Level05", EnvironmentZone.Blue),
+            ("Level05", "Level06", EnvironmentZone.YellowGreen),
+            ("Level06", "Level07", EnvironmentZone.YellowGreen),
+            ("Level07", "Level08", EnvironmentZone.YellowGreen),
+            ("Level08", "Level09", EnvironmentZone.YellowGreen),
+            ("Level09", "Level10", EnvironmentZone.Orange),
+            ("Level10", "Level11", EnvironmentZone.Orange),
+            ("Level11", "Level12", EnvironmentZone.Orange),
+            ("Level12", "EndingSequence", EnvironmentZone.Orange)
+        };
+
+        [UnityTest]
+        public IEnumerator RegisteredCampaignExitsKeepOneBankAndRecordEveryEntry()
+        {
+            const string levels = "Assets/Game/Scenes/Levels/";
+            const string ending = "Assets/Game/Scenes/Ending/EndingSequence.unity";
+            var registered = EditorBuildSettings.scenes.Where(scene => scene.enabled &&
+                scene.path.StartsWith(levels, System.StringComparison.Ordinal)).Select(scene => scene.path);
+            CollectionAssert.AreEqual(CampaignRoute.Select(step => levels + step.Source + ".unity"), registered);
+            yield return Load();
+
+            var bank = RunDashBank.Instance;
+            Assert.AreEqual(5, bank.RemainingCharges);
+            foreach (var step in CampaignRoute)
+            {
+                string source = levels + step.Source + ".unity";
+                string destination = step.Destination == "EndingSequence" ? ending : levels + step.Destination + ".unity";
+                Assert.AreEqual(source, SceneManager.GetActiveScene().path);
+                Assert.IsNotEmpty(AssetDatabase.AssetPathToGUID(source));
+                Assert.AreSame(bank, Object.FindObjectsByType<RunDashBank>(FindObjectsSortMode.None).Single());
+                var setup = Object.FindObjectsByType<LevelSetup>(FindObjectsSortMode.None).Single();
+                Assert.IsNotNull(setup.spawn);
+                Assert.IsNotNull(setup.playerPrefab);
+                Assert.IsNotNull(setup.bankPrefab);
+                Assert.AreSame(setup.Player, Object.FindObjectsByType<PlayerMovement2D>(FindObjectsSortMode.None).Single().gameObject);
+                Assert.AreEqual(step.Zone, Object.FindObjectsByType<EnvironmentTheme>(FindObjectsSortMode.None).Single().Zone);
+                Assert.AreEqual(source, bank.CheckpointScenePath);
+                Assert.AreEqual(bank.RemainingCharges, bank.CheckpointCharges);
+
+                // Spend at representative levels. Exit coverage uses placement, not a solved route.
+                if (step.Source is "Level03" or "Level06" or "Level10")
+                    Assert.IsTrue(bank.TrySpendDash());
+                int balance = bank.RemainingCharges;
+                var exit = Object.FindObjectsByType<LevelExit>(FindObjectsSortMode.None).Single();
+                Assert.IsNotNull(exit.transition);
+                Assert.AreEqual(destination, exit.transition.destinationScene);
+                var trigger = exit.GetComponent<Collider2D>();
+                Assert.IsTrue(trigger.isTrigger);
+
+                var body = setup.Player.GetComponent<Rigidbody2D>();
+                body.linearVelocity = Vector2.zero;
+                body.position = trigger.bounds.center;
+                Physics2D.SyncTransforms();
+                yield return AwaitScene(destination);
+                yield return null;
+                Assert.AreSame(bank, RunDashBank.Instance);
+                Assert.AreEqual(balance, bank.RemainingCharges);
+            }
+            Assert.AreEqual(levels + "Level12.unity", bank.CheckpointScenePath);
+            Assert.IsNotNull(Object.FindFirstObjectByType<EndingSequence>());
+        }
+
+        [UnityTest]
+        public IEnumerator Level05FloorRouteRequiresTwoApprovedWallDashesAndReachesLevel06()
+        {
+            yield return Load(Level05);
+            var bank = RunDashBank.Instance;
+            var walls = Object.FindObjectsByType<BreakableWall2D>(FindObjectsSortMode.None)
+                .OrderBy(wall => wall.transform.position.x).ToArray();
+            Assert.AreEqual(2, walls.Length);
+            var floor = Solids().Single(solid => solid.name == "Floor");
+            var floorBounds = floor.bounds;
+            var body = actor.GetComponent<Rigidbody2D>();
+            yield return MoveRightTo(13f);
+            yield return MoveRightTo(14.1f);
+
+            actor.SetHorizontalInput(1f);
+            for (int tick = 0; tick < 15; tick++) yield return new WaitForFixedUpdate();
+            Assert.IsFalse(walls[0].IsBroken);
+            Assert.Less(body.position.x, 15f);
+            actor.RequestJump();
+            for (int tick = 0; tick < 15; tick++) yield return new WaitForFixedUpdate();
+            Assert.Greater(body.position.y, 2.5f);
+            Assert.IsFalse(walls[0].IsBroken);
+            actor.SetHorizontalInput(0f);
+            yield return LandAt(1f, "Level05 floor");
+
+            for (int i = 0; i < walls.Length; i++)
+            {
+                var wall = walls[i];
+                float left = wall.GetComponent<Collider2D>().bounds.min.x;
+                if (i > 0) yield return MoveRightTo(left - .6f);
+                actor.RequestDash(Vector2.right);
+                for (int tick = 0; tick < 25 && (wall != null || actor.IsDashing); tick++)
+                    yield return new WaitForFixedUpdate();
+                Assert.IsTrue(wall == null || wall.IsBroken, "The intended wall should disappear.");
+                Assert.AreEqual(4 - i, bank.RemainingCharges);
+                Assert.IsTrue(floor.enabled);
+                Assert.AreEqual(floorBounds, floor.bounds);
+                yield return LandAt(1f, "Level05 floor after breaking a wall");
+            }
+            actor.SetHorizontalInput(1f);
+            yield return AwaitScene("Assets/Game/Scenes/Levels/Level06.unity");
+            Assert.AreSame(bank, RunDashBank.Instance);
+            Assert.AreEqual(3, bank.CheckpointCharges);
+        }
+
+        [UnityTest]
+        public IEnumerator Level05IneligibleSecondAirDashCannotBreakTheWallOrSpendAgain()
+        {
+            yield return Load(Level05);
+            yield return MoveRightTo(13f);
+            yield return MoveRightTo(14.3f);
+            yield return LandAt(1f, "floor beside the first wall");
+            var wall = Object.FindObjectsByType<BreakableWall2D>(FindObjectsSortMode.None)
+                .OrderBy(item => item.transform.position.x).First();
+            var bank = RunDashBank.Instance;
+            actor.RequestDash(Vector2.up);
+            yield return new WaitForFixedUpdate();
+            Assert.IsTrue(actor.IsDashing);
+            for (int tick = 0; tick < 20 && actor.IsDashing; tick++) yield return new WaitForFixedUpdate();
+            Assert.IsFalse(actor.IsDashing || actor.IsGrounded);
+            Assert.AreEqual(4, bank.RemainingCharges);
+            actor.RequestDash(Vector2.right);
+            yield return new WaitForFixedUpdate();
+            Assert.IsFalse(actor.IsDashing || wall.IsBroken);
+            Assert.AreEqual(4, bank.RemainingCharges);
+        }
+
+        [UnityTest]
+        public IEnumerator Level05UpperRoutePreservesBothWallsAndAllFiveCharges()
+        {
+            yield return Load(Level05);
+            var body = actor.GetComponent<Rigidbody2D>();
+            var shape = actor.GetComponent<BoxCollider2D>();
+            var bank = RunDashBank.Instance;
+            actor.SetHorizontalInput(-1f);
+            while (body.position.x > 2.6f) yield return new WaitForFixedUpdate();
+            actor.SetHorizontalInput(0f);
+            yield return LandAt(1f, "Level05 spawn floor");
+            foreach (float height in new[] { 4f, 7f, 10f, 13f })
+            {
+                actor.RequestJump();
+                actor.SetHorizontalInput(1f);
+                for (int tick = 0; tick < 8 && body.position.x < 2.62f; tick++)
+                    yield return new WaitForFixedUpdate();
+                actor.SetHorizontalInput(0f);
+                for (int tick = 0; tick < 25 && shape.bounds.min.y < height + .01f; tick++)
+                    yield return new WaitForFixedUpdate();
+                Assert.Greater(shape.bounds.min.y, height, "Rise alongside the ledge at " + height);
+                actor.SetHorizontalInput(-1f);
+                for (int tick = 0; tick < 10 && body.position.x > 2.22f; tick++)
+                    yield return new WaitForFixedUpdate();
+                actor.SetHorizontalInput(0f);
+                yield return LandAt(height, "Level05 left stair");
+            }
+
+            foreach (var (takeoff, target) in new[] { (2.4f, 7.8f), (9.89f, 15.3f), (17.39f, 22.8f) })
+            {
+                yield return MoveRightTo(takeoff);
+                actor.RequestJump();
+                yield return MoveRightTo(target);
+                yield return LandAt(13f, "Level05 upper route");
+            }
+            Assert.AreEqual(2, Object.FindObjectsByType<BreakableWall2D>(FindObjectsSortMode.None).Length);
+            actor.SetHorizontalInput(1f);
+            yield return AwaitScene("Assets/Game/Scenes/Levels/Level06.unity");
+            Assert.AreEqual(5, bank.RemainingCharges);
+        }
+
+        [UnityTest]
+        public IEnumerator Level05FatalDashDoesNotMoveJettOrDestroyTheWall()
+        {
+            yield return Load(Level05);
+            var bank = RunDashBank.Instance;
+            for (int i = 0; i < 4; i++) Assert.IsTrue(bank.TrySpendDash());
+            yield return MoveRightTo(13f);
+            yield return MoveRightTo(14.3f);
+            yield return LandAt(1f, "floor beside the first wall");
+            var wall = Object.FindObjectsByType<BreakableWall2D>(FindObjectsSortMode.None)
+                .OrderBy(item => item.transform.position.x).First();
+            var body = actor.GetComponent<Rigidbody2D>();
+            var before = body.position;
+            actor.RequestDash(Vector2.right);
+            yield return new WaitForFixedUpdate();
+            Assert.AreEqual(0, bank.RemainingCharges);
+            Assert.AreEqual(RunFailureCause.MobilityExhaustion, bank.FailureCause);
+            Assert.IsFalse(wall.IsBroken);
+            Assert.IsFalse(actor.IsDashing);
+            Assert.AreEqual(before, body.position);
+        }
+
+        [UnityTest]
+        public IEnumerator Level11MovingPlatformsAdvanceAndPitRetryRestoresEntry()
+        {
+            yield return Load();
+            var bank = RunDashBank.Instance;
+            Assert.IsTrue(bank.TrySpendDash());
+            yield return Load(Level11);
+            var platforms = Object.FindObjectsByType<MovingPlatform2D>(FindObjectsSortMode.None);
+            Assert.AreEqual(8, platforms.Length);
+            var bodies = platforms.Select(item => item.GetComponent<Rigidbody2D>()).ToArray();
+            var positions = bodies.Select(body => body.position).ToArray();
+            for (int tick = 0; tick < 30; tick++) yield return new WaitForFixedUpdate();
+            for (int i = 0; i < platforms.Length; i++)
+            {
+                Assert.AreNotEqual(platforms[i].EndpointA, platforms[i].EndpointB, platforms[i].name);
+                Assert.Greater(Vector2.Distance(positions[i], bodies[i].position), .03f, platforms[i].name);
+            }
+
+            Assert.AreEqual(4, bank.CheckpointCharges);
+            Assert.IsTrue(bank.TrySpendDash());
+            var pit = Object.FindObjectsByType<FallDeathZone2D>(FindObjectsSortMode.None).Single();
+            var player = actor.GetComponent<Rigidbody2D>();
+            player.position = pit.GetComponent<Collider2D>().bounds.center;
+            Physics2D.SyncTransforms();
+            yield return new WaitUntil(() => bank.IsGameOver, System.TimeSpan.FromSeconds(4), () => Assert.Fail("Level11 pit was not lethal."));
+            Assert.AreEqual(RunFailureCause.Environmental, bank.FailureCause);
+            Assert.AreEqual(3, bank.RemainingCharges);
+            Assert.IsTrue(bank.TryRetryLevel(SceneManager.GetActiveScene()));
+            yield return new WaitUntil(() => !bank.IsGameOver, System.TimeSpan.FromSeconds(5), () => Assert.Fail("Level11 retry did not finish."));
+            Assert.AreEqual(Level11, SceneManager.GetActiveScene().path);
+            Assert.AreSame(bank, RunDashBank.Instance);
+            Assert.AreEqual(4, bank.RemainingCharges);
+            var setup = Object.FindFirstObjectByType<LevelSetup>();
+            Assert.AreEqual(setup.spawn.position.x, setup.Player.transform.position.x, .001f);
+        }
+
+        [UnityTest]
+        public IEnumerator Level12SpawnsSafelyAndAuthoredCrusherAndTurretActivate()
+        {
+            yield return Load(Level12);
+            var bank = RunDashBank.Instance;
+            var turret = Object.FindObjectsByType<Turret2D>(FindObjectsSortMode.None).Single();
+            Assert.IsTrue(turret.aimAtPlayer);
+            Assert.AreEqual(2f, turret.initialDelay);
+            Assert.AreEqual(.4f, turret.shotInterval);
+            Assert.AreEqual(10f, turret.projectileSpeed);
+            Assert.AreEqual(8f, turret.projectilePrefab.lifetime);
+            Assert.AreEqual(2, Object.FindObjectsByType<MovingPlatform2D>(FindObjectsSortMode.None).Length);
+            var zone = Object.FindObjectsByType<CrusherActivationZone2D>(FindObjectsSortMode.None).Single();
+            var crusher = zone.crusher;
+            Assert.IsNotNull(crusher);
+            Assert.AreEqual(CrusherState.Armed, crusher.State);
+            yield return LandAt(1f, "Level12 spawn floor");
+            yield return new WaitUntil(() => turret.ShotsFired >= 1, System.TimeSpan.FromSeconds(4), () => Assert.Fail("Level12 turret did not fire."));
+            Assert.IsFalse(bank.IsGameOver);
+            Assert.AreEqual(5, bank.RemainingCharges);
+
+            var player = actor.GetComponent<Rigidbody2D>();
+            player.position = zone.GetComponent<Collider2D>().bounds.center;
+            player.linearVelocity = Vector2.zero;
+            Physics2D.SyncTransforms();
+            float before = crusher.GetComponent<Rigidbody2D>().position.y;
+            yield return new WaitUntil(() => crusher.State != CrusherState.Armed, System.TimeSpan.FromSeconds(4), () => Assert.Fail("Level12 trigger did not activate the crusher."));
+            yield return new WaitUntil(() => bank.IsGameOver || crusher.GetComponent<Rigidbody2D>().position.y < before - .05f,
+                System.TimeSpan.FromSeconds(5), () => Assert.Fail("Level12 crusher did not descend."));
+            Assert.AreEqual(5, bank.RemainingCharges);
+        }
 
         [UnityTearDown] public IEnumerator Cleanup()
         {
@@ -83,10 +352,10 @@ namespace GameJam.LevelAuthoring.Tests
                 ("Ceiling", new Vector2(16, 17.5f), new Vector2(32, 1)),
                 ("Left boundary", new Vector2(.5f, 9), new Vector2(1, 16)),
                 ("Right boundary", new Vector2(31.5f, 9), new Vector2(1, 16)),
-                ("GridPlatform32x18 (1)", new Vector2(9, 3.5f), new Vector2(4, 1)),
-                ("GridPlatform32x18 (3)", new Vector2(15.5f, 6.5f), new Vector2(2, 1)),
-                ("GridPlatform32x18 (2)", new Vector2(23.5f, 6.5f), new Vector2(4, 1)),
-                ("Landing ledge (1)", new Vector2(29, 9.5f), new Vector2(4, 1)),
+                ("GridPlatform32x18 (1)", new Vector2(9, 3.75f), new Vector2(4, .5f)),
+                ("GridPlatform32x18 (3)", new Vector2(15.5f, 6.75f), new Vector2(2, .5f)),
+                ("GridPlatform32x18 (2)", new Vector2(23, 6.75f), new Vector2(3, .5f)),
+                ("Landing ledge (1)", new Vector2(29, 9.75f), new Vector2(4, .5f)),
                 ("Terminal placeholder", new Vector2(9, 5.25f), new Vector2(1, 1.6f))
             };
             foreach (var (name, center, size) in authored)
@@ -97,23 +366,26 @@ namespace GameJam.LevelAuthoring.Tests
             }
         }
 
-        [UnityTest] public IEnumerator ForegroundFramesAndArtMatchEverySolid()
+        [UnityTest] public IEnumerator ForegroundFramesAndVisibleArtMatchEverySolid()
         {
             yield return Load();
             foreach (var solid in Solids())
             {
                 var bounds = AuthoredBounds(solid);
-                var art = solid.transform.Find("Floor visuals").GetComponent<SpriteRenderer>();
+                var art = solid.transform.Find("Environment surface art")?.GetComponent<SpriteRenderer>()
+                    ?? solid.transform.Find("Floor visuals").GetComponent<SpriteRenderer>();
                 var frame = solid.transform.Find("Gameplay surface frame");
                 var backing = frame.Find("Backing").GetComponent<SpriteRenderer>();
                 var top = frame.Find("Top").GetComponent<SpriteRenderer>();
-                // Sprite bounds include renderer depth; only XY bounds participate in 2D collision.
-                AssertBoundsXY(bounds.center, art.bounds.center, solid.name);
-                AssertBoundsXY(bounds.size, art.bounds.size, solid.name);
-                AssertBoundsXY(bounds.center, backing.bounds.center, solid.name);
-                AssertBoundsXY(bounds.size, backing.bounds.size, solid.name);
+                Assert.IsFalse(backing.enabled);
+                if (solid.enabled)
+                {
+                    Assert.IsTrue(art.enabled, solid.name);
+                    Assert.AreEqual(bounds.size.x, art.bounds.size.x, .001f, solid.name);
+                    Assert.AreEqual(bounds.max.y, art.bounds.max.y, .001f, solid.name);
+                }
                 Assert.AreEqual(.05f * Mathf.Abs(solid.transform.lossyScale.y), top.bounds.size.y, .001f, solid.name);
-                Assert.AreEqual(bounds.max.y, top.bounds.max.y, .001f, solid.name);
+                if (top.enabled) Assert.AreEqual(bounds.max.y, top.bounds.max.y, .001f, solid.name);
                 Assert.Greater(top.color.grayscale, backing.color.grayscale + .5f);
                 Assert.IsEmpty(frame.GetComponentsInChildren<Collider2D>());
             }
@@ -131,15 +403,21 @@ namespace GameJam.LevelAuthoring.Tests
             Assert.AreEqual(5.25f, actor.MoveSpeed); Assert.AreEqual(14, actor.JumpSpeed);
             Assert.AreEqual(18, actor.DashSpeed); Assert.AreEqual(.20f, actor.DashDuration, .001f);
             Assert.AreEqual(3, actor.GetComponent<Rigidbody2D>().gravityScale);
+            var values = new SerializedObject(actor);
+            Assert.AreEqual(.075f, values.FindProperty("coyoteTime").floatValue);
+            Assert.AreEqual(.08f, values.FindProperty("jumpBufferTime").floatValue);
             Assert.NotNull(actor.GetComponentInChildren<PlayerPresentation>());
             Assert.AreEqual(5, RunDashBank.Instance.RemainingCharges); Assert.IsFalse(SceneDashSettings.AllowsAirDashChaining());
             for (int i = 0; i < 30 && !actor.IsGrounded; i++) yield return new WaitForFixedUpdate();
             Assert.IsTrue(actor.IsGrounded);
         }
 
-        [UnityTest] public IEnumerator EntireRoomRendersAtFourOutputSizesWithIntegerWindowboxing()
+        private static readonly string[] CameraRooms = { LevelAuthoring32x18.Level01, Level11, Level12 };
+
+        [UnityTest] public IEnumerator EntireRoomRendersAtFourOutputSizesWithIntegerWindowboxing(
+            [ValueSource(nameof(CameraRooms))] string room)
         {
-            yield return Load(); var camera = Camera.main;
+            yield return Load(room); var camera = Camera.main;
             foreach (var size in new[] { new Vector2Int(1280, 720), new Vector2Int(1920, 1080), new Vector2Int(2560, 1440), new Vector2Int(1366, 900) })
             {
                 var previous = camera.targetTexture;

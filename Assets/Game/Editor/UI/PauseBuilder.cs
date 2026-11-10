@@ -20,7 +20,7 @@ namespace GameJam.UI.Editor
         public static void Create()
         {
             if (File.Exists(PrefabPath)) throw new InvalidOperationException("Pause exists; edit it instead of regenerating.");
-            var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/Game/UI/TextResources/Resources/Fonts & Materials/LiberationSans SDF.asset");
+            var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(MenuBuilder.ProductionMenuFontPath);
             if (font == null) throw new InvalidOperationException("Accepted menu font is required.");
             var root = new GameObject("Pause"); root.SetActive(false);
             var c = root.AddComponent<PauseController>();
@@ -63,6 +63,11 @@ namespace GameJam.UI.Editor
             c.uiEventSystem = es.GetComponent<EventSystem>(); c.uiEventSystem.firstSelectedGameObject = c.resumeButton.gameObject;
             c.inputScope = es.AddComponent<MenuInputScope>(); c.inputScope.inputActions = AssetDatabase.LoadAssetAtPath<InputActionAsset>("Assets/Settings/InputSystem_Actions.inputactions"); c.inputScope.enabled = false;
             es.SetActive(false); canvasObject.SetActive(false);
+            foreach (var label in root.GetComponentsInChildren<TMP_Text>(true))
+            {
+                label.font = font;
+                label.fontSharedMaterial = font.material;
+            }
             foreach (var component in root.GetComponentsInChildren<Component>(true))
                 if (PrefabUtility.IsPartOfPrefabInstance(component)) PrefabUtility.RecordPrefabInstancePropertyModifications(component);
             root.SetActive(true); PrefabUtility.SaveAsPrefabAsset(root, PrefabPath); Object.DestroyImmediate(root); AssetDatabase.SaveAssets();
