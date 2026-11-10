@@ -23,7 +23,7 @@ namespace GameJam.UI.Tests
     {
         private const string Level01 = "Assets/Game/Scenes/Levels/Level01.unity";
         private const string Level02 = "Assets/Game/Scenes/Levels/Level02.unity";
-        private const string Level10 = "Assets/Game/Scenes/Levels/Level10.unity";
+        private const string Level12 = "Assets/Game/Scenes/Levels/Level12.unity";
         private Keyboard keyboard;
         private Gamepad pad;
         private InputSettings original, settings;
@@ -68,16 +68,16 @@ namespace GameJam.UI.Tests
             LogAssert.NoUnexpectedReceived();
         }
 
-        [UnityTest] public IEnumerator AuthoredLevel10ExitUsesPhysicsAndStartsTheEndingOnce()
+        [UnityTest] public IEnumerator AuthoredLevel12ExitUsesPhysicsAndStartsTheEndingOnce()
         {
-            yield return Load(Level10);
+            yield return Load(Level12);
             var bank = RunDashBank.Instance;
             Assert.AreEqual(5, bank.CheckpointCharges);
             Assert.IsTrue(bank.TrySpendDash());
             Assert.AreEqual(4, bank.RemainingCharges);
             var exit = Object.FindFirstObjectByType<LevelExit>();
             Assert.AreEqual(EndingSequence.ScenePath, exit.transition.destinationScene);
-            Assert.AreEqual(new Vector2(28, 14), (Vector2)exit.GetComponent<BoxCollider2D>().bounds.center);
+            Assert.AreEqual(new Vector2(29, 14), (Vector2)exit.GetComponent<BoxCollider2D>().bounds.center);
             Assert.AreEqual(new Vector2(2, 2), exit.GetComponent<BoxCollider2D>().size);
             Assert.GreaterOrEqual(SceneUtility.GetBuildIndexByScenePath(EndingSequence.ScenePath), 0);
             int entries = 0;
@@ -90,7 +90,7 @@ namespace GameJam.UI.Tests
                 Assert.AreEqual(1, entries);
                 Assert.AreSame(bank, RunDashBank.Instance);
                 Assert.AreEqual(4, bank.RemainingCharges);
-                Assert.AreEqual(Level10, bank.CheckpointScenePath);
+                Assert.AreEqual(Level12, bank.CheckpointScenePath);
                 Assert.AreEqual(5, bank.CheckpointCharges);
                 Assert.IsFalse(bank.IsGameOver);
             }
@@ -169,39 +169,45 @@ namespace GameJam.UI.Tests
             var credits = Field<TMP_Text>("credits");
             var archive = AssetDatabase.LoadAssetAtPath<GameObject>(MenuBuilder.PrefabPath)
                 .GetComponent<MainMenuView>().credits.archive.content;
-            foreach (var heading in new[] { "GAME DEVELOPMENT", "ART & ANIMATION", "LEVEL & PUZZLE DESIGN" })
+            foreach (var heading in new[] { "GAME DEVELOPMENT", "ART & ANIMATION", "LEVEL & PUZZLE DESIGN", "AUDIO & MUSIC", "TYPOGRAPHY & FONT DESIGN" })
                 StringAssert.Contains(archive.Find(heading + "Body").GetComponent<TMP_Text>().text, credits.text);
-            foreach (var name in new[] { "Devin Padin / Jarheadd1", "DeeFeeCee", "Sarah (AceofHome)", "mrdrworm" })
+            foreach (var name in new[] { "Devin Padin / Jarheadd1", "Douglas (DeeFeeCee)", "Sarah (AceofHome)", "Alexzander (mrdrworm)" })
                 StringAssert.Contains(name, credits.text);
             Assert.NotNull(credits.font);
             Assert.AreSame(credits.font, Field<TMP_Text>("reveal").font);
+            StringAssert.EndsWith("/LiberationSans SDF.asset", AssetDatabase.GetAssetPath(credits.font));
         }
 
         [UnityTest]
-        public IEnumerator CinematicRollFullyDisplaysDeesConfirmedAudioCredit()
+        public IEnumerator CinematicRollFullyDisplaysDeesConfirmedAudioAndTypefaceCredits()
         {
-            const string audio = "<b>AUDIO & MUSIC</b>\n\n<b>DeeFeeCee</b>\nMusic & Sound FX";
+            const string audio = "<b>AUDIO & MUSIC</b>\n\n<b>Douglas (DeeFeeCee)</b>\nMusic & Sound FX";
+            const string typography = "<b>TYPOGRAPHY & FONT DESIGN</b>\n\n<b>Douglas (DeeFeeCee)</b>\nOriginal Typeface: DeeFont1.17";
             yield return LoadEnding();
             var credits = Field<TMP_Text>("credits");
             var viewport = Field<RectTransform>("creditsViewport");
-            StringAssert.Contains("<b>DeeFeeCee</b>\nRepository coordination, integration and gameplay mechanics.", credits.text);
-            Assert.IsTrue(credits.text.EndsWith(audio, StringComparison.Ordinal));
-            int audioStart = credits.text.Length - audio.Length;
+            StringAssert.Contains("<b>Douglas (DeeFeeCee)</b>\nRepository coordination, integration and gameplay mechanics.", credits.text);
+            StringAssert.Contains(audio, credits.text);
+            Assert.IsTrue(credits.text.EndsWith(typography, StringComparison.Ordinal));
 
             yield return Until(() => ending.CurrentStage == EndingSequence.Stage.Credits, "Credits start");
             credits.ForceMeshUpdate();
             Assert.IsFalse(credits.isTextOverflowing);
             Assert.LessOrEqual(credits.textBounds.size.x, credits.rectTransform.rect.width);
-            var characters = credits.textInfo.characterInfo.Take(credits.textInfo.characterCount)
-                .Where(character => character.isVisible && character.index >= audioStart).ToArray();
-            Assert.IsNotEmpty(characters);
-            yield return Until(() =>
+            foreach (string section in new[] { audio, typography })
             {
-                var toViewport = viewport.worldToLocalMatrix * credits.rectTransform.localToWorldMatrix;
-                return ending.CurrentStage == EndingSequence.Stage.Credits && characters.All(character =>
-                    viewport.rect.Contains(toViewport.MultiplyPoint3x4(character.bottomLeft)) &&
-                    viewport.rect.Contains(toViewport.MultiplyPoint3x4(character.topRight)));
-            }, "The complete audio credit scrolls into view");
+                int start = credits.text.IndexOf(section, StringComparison.Ordinal);
+                var characters = credits.textInfo.characterInfo.Take(credits.textInfo.characterCount)
+                    .Where(character => character.isVisible && character.index >= start && character.index < start + section.Length).ToArray();
+                Assert.IsNotEmpty(characters);
+                yield return Until(() =>
+                {
+                    var toViewport = viewport.worldToLocalMatrix * credits.rectTransform.localToWorldMatrix;
+                    return ending.CurrentStage == EndingSequence.Stage.Credits && characters.All(character =>
+                        viewport.rect.Contains(toViewport.MultiplyPoint3x4(character.bottomLeft)) &&
+                        viewport.rect.Contains(toViewport.MultiplyPoint3x4(character.topRight)));
+                }, "The complete credit section scrolls into view: " + section);
+            }
             yield return Ready();
             Assert.AreEqual(1f, ending.CreditsProgress);
         }
@@ -285,7 +291,7 @@ namespace GameJam.UI.Tests
 
         [UnityTest] public IEnumerator MissingExitDestinationRejectsTheRequestWithoutFreezingOrSpending()
         {
-            yield return Load(Level10);
+            yield return Load(Level12);
             var actor = Object.FindFirstObjectByType<PlayerMovement2D>();
             var exit = Object.FindFirstObjectByType<LevelExit>();
             exit.transition.destinationScene = "Assets/MissingEnding.unity";

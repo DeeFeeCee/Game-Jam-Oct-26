@@ -72,8 +72,44 @@ namespace GameJam.UI.Tests
         }
         [UnityTest] public IEnumerator KnownRosterAndOnlyConfirmedToolsAreVisible()
         {
-            view.OpenCredits();string text=Texts();foreach(var token in new[]{"Devin Padin / Jarheadd1","DeeFeeCee","Sarah (AceofHome)","mrdrworm","Unity 6000.3.26f1","C#","Git","GitHub"})StringAssert.Contains(token,text);
+            view.OpenCredits();string text=Texts();foreach(var token in new[]{"Devin Padin / Jarheadd1","Douglas (DeeFeeCee)","Sarah (AceofHome)","Alexzander (mrdrworm)","Unity 6000.3.26f1","C#","Git","GitHub"})StringAssert.Contains(token,text);
             foreach(var old in new[]{"Index Code","Canyon Drive","Tinblood","Lux Fracta"})StringAssert.DoesNotContain(old,text);yield return null;
+        }
+
+        [Test]
+        public void ConfirmedDeeFontIsBakedAndScopedToMenuAndPause()
+        {
+            const string folder = "Assets/Game/UI/Fonts/";
+            var font = AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>(folder + "DeeFont1.17 SDF.asset");
+            Assert.IsNotNull(font);
+            Assert.AreEqual("DeeFont", font.faceInfo.familyName);
+            Assert.AreEqual(TMPro.AtlasPopulationMode.Static, font.atlasPopulationMode);
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            string hash = System.BitConverter.ToString(sha.ComputeHash(System.IO.File.ReadAllBytes(folder + "DeeFont1.17.ttf"))).Replace("-", "");
+            Assert.AreEqual("531F50D6BAD6D243FA4BC31343B5EA0227759BA4EE532B4EA110F5B75B4F5CF7", hash);
+
+            foreach (var path in new[] { MenuBuilder.PrefabPath, PauseBuilder.PrefabPath })
+            {
+                var labels = AssetDatabase.LoadAssetAtPath<GameObject>(path).GetComponentsInChildren<TMPro.TMP_Text>(true);
+                Assert.IsNotEmpty(labels);
+                foreach (var label in labels)
+                {
+                    Assert.AreSame(font, label.font, label.name);
+                    Assert.AreSame(font.material, label.fontSharedMaterial, label.name);
+                    var plain = System.Text.RegularExpressions.Regex.Replace(label.text, "<[^>]*>", "");
+                    foreach (var glyph in plain.Where(c => !char.IsControl(c)).Distinct())
+                        Assert.IsTrue(font.HasCharacter(glyph), $"{label.name}: missing U+{(int)glyph:X4}");
+                }
+            }
+
+            Assert.AreNotSame(font, TMPro.TMP_Settings.defaultFontAsset);
+            foreach (var path in new[] { MenuBuilder.ButtonPath, "Assets/Game/UI/Resources/UI/GameOver.prefab",
+                "Assets/Game/UI/Resources/UI/MobilityReserveHUD.prefab" })
+            {
+                var labels = AssetDatabase.LoadAssetAtPath<GameObject>(path).GetComponentsInChildren<TMPro.TMP_Text>(true);
+                Assert.IsNotEmpty(labels);
+                foreach (var label in labels) Assert.AreNotSame(font, label.font, label.name);
+            }
         }
         [UnityTest] public IEnumerator SarahsCreditIsDisplayedInTheRosterAndArtSection()
         {
@@ -95,22 +131,31 @@ namespace GameJam.UI.Tests
             view.OpenCredits();
             var content = credits.archive.content;
             var development = content.Find("GAME DEVELOPMENTBody").GetComponent<TMPro.TMP_Text>();
-            StringAssert.Contains("<b>DeeFeeCee</b>\nRepository coordination, integration and gameplay mechanics.", development.text);
+            StringAssert.Contains("<b>Douglas (DeeFeeCee)</b>\nRepository coordination, integration and gameplay mechanics.", development.text);
             var audio = content.Find("AUDIO & MUSICBody").GetComponent<TMPro.TMP_Text>();
-            Assert.AreEqual("<b>DeeFeeCee</b>\nMusic & Sound FX", audio.text);
+            Assert.AreEqual("<b>Douglas (DeeFeeCee)</b>\nMusic & Sound FX", audio.text);
             Assert.AreEqual("CONFIRMED CONTRIBUTION", content.Find("AUDIO & MUSICRecord").GetComponent<TMPro.TMP_Text>().text);
+            var typography = content.Find("TYPOGRAPHY & FONT DESIGNBody").GetComponent<TMPro.TMP_Text>();
+            Assert.AreEqual("<b>Douglas (DeeFeeCee)</b>\nOriginal Typeface: DeeFont1.17", typography.text);
 
             Canvas.ForceUpdateCanvases();
-            credits.archive.verticalNormalizedPosition = 0f;
-            yield return null;
-            audio.ForceMeshUpdate();
-            Assert.IsFalse(audio.isTextOverflowing);
-            Assert.LessOrEqual(audio.textBounds.size.x, audio.rectTransform.rect.width);
             var viewport = credits.archive.viewport;
-            var corners = new Vector3[4];
-            audio.rectTransform.GetWorldCorners(corners);
-            Assert.IsTrue(viewport.rect.Contains(viewport.InverseTransformPoint(corners[0])));
-            Assert.IsTrue(viewport.rect.Contains(viewport.InverseTransformPoint(corners[2])));
+            float scrollable = content.rect.height - viewport.rect.height;
+            Assert.Greater(scrollable, 0f);
+            foreach (var credit in new[] { audio, typography })
+            {
+                var center = credit.rectTransform.TransformPoint(credit.rectTransform.rect.center);
+                float offset = -content.InverseTransformPoint(center).y - viewport.rect.height / 2f;
+                credits.archive.verticalNormalizedPosition = 1f - Mathf.Clamp01(offset / scrollable);
+                yield return null;
+                credit.ForceMeshUpdate();
+                Assert.IsFalse(credit.isTextOverflowing);
+                Assert.LessOrEqual(credit.textBounds.size.x, credit.rectTransform.rect.width);
+                var corners = new Vector3[4];
+                credit.rectTransform.GetWorldCorners(corners);
+                Assert.IsTrue(viewport.rect.Contains(viewport.InverseTransformPoint(corners[0])));
+                Assert.IsTrue(viewport.rect.Contains(viewport.InverseTransformPoint(corners[2])));
+            }
             Assert.IsTrue(credits.returnButton.IsInteractable());
         }
 

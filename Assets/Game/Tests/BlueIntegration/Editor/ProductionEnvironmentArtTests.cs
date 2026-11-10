@@ -26,15 +26,15 @@ namespace GameJam.BlueIntegration.Tests
         [Test]
         public void EveryProductionRoomHasOnlyItsOriginalSolidsAndExit()
         {
-            int[] solids = { 9, 9, 12, 12, 12, 17, 14, 23, 10, 17 };
-            int[] triggers = { 1, 1, 2, 2, 1, 2, 1, 2, 7, 1 };
-            for (int level = 1; level <= 10; level++)
+            int[] solids = { 9, 9, 12, 14, 13, 17, 14, 23, 10, 17, 16, 17 };
+            int[] triggers = { 1, 2, 2, 2, 1, 2, 2, 2, 7, 1, 2, 2 };
+            for (int level = 1; level <= 12; level++)
             {
                 int room = level;
                 InScene($"{Prefix}{room:00}.unity", scene =>
                 {
                     var boxes = All<Collider2D>(scene).ToArray();
-                    bool hasDecorativeTerminal = room is 1 or 3 or 4 or 5 or 6 or 7;
+                    bool hasDecorativeTerminal = room is 1 or 3 or 4 or 5 or 6 or 7 or 8 or 11;
                     Assert.AreEqual(solids[room - 1], boxes.Count(box => !box.isTrigger), scene.name);
                     Assert.AreEqual(solids[room - 1] - (hasDecorativeTerminal ? 1 : 0),
                         boxes.Count(box => !box.isTrigger && box.enabled), scene.name);
@@ -42,7 +42,7 @@ namespace GameJam.BlueIntegration.Tests
                     Assert.AreEqual(triggers[room - 1], boxes.Count(box => box.isTrigger), scene.name);
                     var exit = All<LevelExit>(scene).Single();
                     Assert.IsTrue(exit.GetComponent<Collider2D>().isTrigger);
-                    Assert.AreEqual(room == 10 ? Ending : $"{Prefix}{room + 1:00}.unity", exit.transition.destinationScene);
+                    Assert.AreEqual(room == 12 ? Ending : $"{Prefix}{room + 1:00}.unity", exit.transition.destinationScene);
                     bool yellow = room >= 5 && room <= 8;
                     var door = exit.transform.Find(ProductionEnvironmentAuthoring.ExitName);
                     Assert.AreEqual(Art + (yellow ? "YGExit.png" : "BlueExit.png"), AssetDatabase.GetAssetPath(door.GetComponent<SpriteRenderer>().sprite));
@@ -67,15 +67,19 @@ namespace GameJam.BlueIntegration.Tests
             }
         }
 
-        [Test]
-        public void AuthoringTwicePreservesIdentityAndDoesNotAddCollidersOrTriggers()
+        [TestCase(10)]
+        [TestCase(11)]
+        [TestCase(12)]
+        public void AuthoringTwicePreservesIdentityAndDoesNotAddCollidersOrTriggers(int room)
         {
-            InScene(Prefix + "10.unity", scene =>
+            InScene($"{Prefix}{room:00}.unity", scene =>
             {
                 var originals = All<Collider2D>(scene).ToDictionary(box => box, box => EditorJsonUtility.ToJson(box));
+                var mechanics = All<MovingPlatform2D>(scene).Cast<Component>().Concat(All<FallingCrusherPlatform2D>(scene))
+                    .Concat(All<Turret2D>(scene)).ToDictionary(component => component, component => EditorJsonUtility.ToJson(component));
                 var exits = All<LevelExit>(scene).ToArray();
                 var artObjects = All<Transform>(scene).Count();
-                var warning = $"Level10: {ProductionEnvironmentAuthoring.OrangePending}. Temporary Blue kit retained.";
+                var warning = $"Level{room:00}: {ProductionEnvironmentAuthoring.OrangePending}. Temporary Blue kit retained.";
                 LogAssert.Expect(LogType.Warning, warning);
                 ProductionEnvironmentAuthoring.Apply(scene);
                 LogAssert.Expect(LogType.Warning, warning);
@@ -84,6 +88,8 @@ namespace GameJam.BlueIntegration.Tests
                 CollectionAssert.AreEquivalent(originals.Keys, All<Collider2D>(scene));
                 CollectionAssert.AreEqual(exits, All<LevelExit>(scene));
                 foreach (var pair in originals)
+                    Assert.AreEqual(pair.Value, EditorJsonUtility.ToJson(pair.Key));
+                foreach (var pair in mechanics)
                     Assert.AreEqual(pair.Value, EditorJsonUtility.ToJson(pair.Key));
             });
         }
@@ -116,7 +122,7 @@ namespace GameJam.BlueIntegration.Tests
         [Test]
         public void ReplacedPlatformFramesKeepOnlyTheSafeTopAndUseTheAssignedKit()
         {
-            for (int level = 1; level <= 10; level++)
+            for (int level = 1; level <= 12; level++)
             {
                 int room = level;
                 InScene($"{Prefix}{room:00}.unity", scene =>
@@ -151,6 +157,8 @@ namespace GameJam.BlueIntegration.Tests
         [TestCase(5, true)]
         [TestCase(6, true)]
         [TestCase(7, true)]
+        [TestCase(8, true)]
+        [TestCase(11, false)]
         public void TerminalArtworkKeepsIdentityAndSupportWithoutActiveLegacyGeometry(int room, bool yellow)
         {
             InScene($"{Prefix}{room:00}.unity", scene =>
@@ -165,10 +173,12 @@ namespace GameJam.BlueIntegration.Tests
                 {
                     1 => new Vector3(9, 5.25f, 0),
                     3 => new Vector3(28.5f, 2, 0),
-                    4 => new Vector3(16, 11, 0),
-                    5 => new Vector3(2, 10, 0),
+                    4 => new Vector3(16, 12, 0),
+                    5 => new Vector3(20.5f, 2, 0),
                     6 => new Vector3(2.5f, 14, 0),
-                    _ => new Vector3(29, 9, 0)
+                    7 => new Vector3(29, 9, 0),
+                    8 => new Vector3(2, 3, 0),
+                    _ => new Vector3(11, 11, 0)
                 };
                 Assert.AreEqual(expectedRoot, shape.transform.position);
                 Assert.AreEqual(AnimatorCullingMode.AlwaysAnimate, terminal.cullingMode);
@@ -191,9 +201,12 @@ namespace GameJam.BlueIntegration.Tests
                 var supportName = room switch
                 {
                     3 => "Floor (1)",
-                    5 => "GridPlatform32x18 (2)",
+                    4 => "GridPlatform32x18 (7)",
+                    5 => "Floor",
                     6 => "GridPlatform32x18 (5)",
                     7 => "GridPlatform32x18 (7)",
+                    8 => "GridPlatform32x18 (8)",
+                    11 => "GridPlatform32x18 (2)",
                     _ => "GridPlatform32x18 (1)"
                 };
                 var support = All<BoxCollider2D>(scene).Single(box => box.name == supportName);
@@ -301,12 +314,14 @@ namespace GameJam.BlueIntegration.Tests
             var turret = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Game/Prefabs/Turret.prefab").GetComponent<Turret2D>();
             Assert.AreEqual(Vector2.left, turret.firingDirection);
             Assert.AreEqual(new Vector3(-.6f, 0f, 0f), turret.muzzle.localPosition);
-            Assert.AreEqual(5f, turret.projectileSpeed);
-            Assert.AreEqual(.5f, turret.shotInterval);
+            Assert.AreEqual(3f, turret.projectileSpeed);
+            Assert.AreEqual(.75f, turret.shotInterval);
+            Assert.AreEqual(1f, turret.initialDelay);
             var visuals = turret.transform.Find(ProductionEnvironmentAuthoring.TurretName);
             Assert.AreEqual("Mount", visuals.Find("Mount").GetComponent<SpriteRenderer>().sprite.name);
             Assert.AreEqual("Turret_Barrel", visuals.Find("Barrel").GetComponent<SpriteRenderer>().sprite.name);
             var projectile = turret.projectilePrefab;
+            Assert.AreEqual(8f, projectile.lifetime);
             var shape = projectile.GetComponent<CircleCollider2D>();
             Assert.IsTrue(shape.isTrigger);
             Assert.AreEqual(.12f, shape.radius);

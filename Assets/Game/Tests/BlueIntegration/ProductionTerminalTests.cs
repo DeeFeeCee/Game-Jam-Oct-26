@@ -19,7 +19,7 @@ namespace GameJam.BlueIntegration.Tests
 {
     public sealed class ProductionTerminalTests
     {
-        public static readonly int[] Rooms = { 1, 3, 4, 5, 6, 7 };
+        public static readonly int[] Rooms = { 1, 3, 4, 5, 6, 7, 8, 11 };
         private Keyboard keyboard;
         private InputSettings originalSettings, testSettings;
         private string originalSettingsJson;
@@ -92,11 +92,13 @@ namespace GameJam.BlueIntegration.Tests
             Press();
             yield return Until(() => actor.IsGrounded && Mathf.Abs(playerBox.bounds.min.y - top) < .045f, "landing after the jump");
 
-            float direction = room is 5 or 6 ? -1f : 1f;
+            float direction = room is 5 or 6 or 8 ? -1f : 1f;
             Place(body, x - direction * .86f, body.position.y + .04f);
             yield return Until(() => actor.IsGrounded && Mathf.Abs(playerBox.bounds.min.y - top) < .045f, "settle beside the terminal");
             Press(direction > 0 ? Key.RightArrow : Key.LeftArrow);
-            yield return Until(() => (body.position.x - x) * direction > .39f, "walk through the old collision column");
+            // The Level04 terminal center sits at the authored platform edge.
+            float crossing = room == 4 ? .17f : .39f;
+            yield return Until(() => (body.position.x - x) * direction > crossing, "walk through the old collision column");
             Press();
             Assert.Less(Mathf.Abs(playerBox.bounds.min.y - top), .065f);
             Assert.IsFalse(bank.IsGameOver);
@@ -114,8 +116,9 @@ namespace GameJam.BlueIntegration.Tests
             var position = art.transform.position;
             var scale = art.transform.lossyScale;
             var support = Support(animator);
-            var normal = room < 5 ? "BlueTerminal_Norm" : "YGTerminal_0";
-            var blink = room < 5 ? "BlueTerminal_Blink" : "YGTerminal_1";
+            bool yellow = room is >= 5 and <= 8;
+            var normal = yellow ? "YGTerminal_0" : "BlueTerminal_Norm";
+            var blink = yellow ? "YGTerminal_1" : "BlueTerminal_Blink";
             Assert.AreEqual(1, art.GetComponents<SpriteRenderer>().Length);
             Assert.AreEqual(1, animator.transform.parent.GetComponentsInChildren<Animator>(true).Length);
             var firstCycle = animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
@@ -155,7 +158,7 @@ namespace GameJam.BlueIntegration.Tests
         {
             var renderer = art.GetComponent<SpriteRenderer>();
             return Object.FindObjectsByType<BoxCollider2D>(FindObjectsSortMode.None).Single(shape => shape.enabled &&
-                !shape.isTrigger && shape.bounds.min.x < art.transform.position.x && shape.bounds.max.x > art.transform.position.x &&
+                !shape.isTrigger && shape.bounds.min.x <= art.transform.position.x && shape.bounds.max.x >= art.transform.position.x &&
                 Mathf.Abs(shape.bounds.max.y - renderer.bounds.min.y) < .001f);
         }
 

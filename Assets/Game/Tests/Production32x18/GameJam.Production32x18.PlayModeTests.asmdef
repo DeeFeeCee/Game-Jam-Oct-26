@@ -6,6 +6,7 @@
     "GameJam.LevelAuthoring.Editor",
     "GameJam.Levels",
     "GameJam.Movement",
+    "GameJam.Mechanics",
     "GameJam.DashResources",
     "GameJam.Presentation",
     "GameJam.UI",

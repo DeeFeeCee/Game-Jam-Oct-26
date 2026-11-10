@@ -21,7 +21,7 @@ namespace GameJam.UI.Editor
                 var font=view.mainPanel.GetComponentInChildren<TMP_Text>().font;
                 var c=root.AddComponent<CreditsArchiveView>();view.credits=c;
                 var actions=view.controlsButton.transform.parent;
-                view.creditsButton=Button(actions,"Credits","CREDITS");view.creditsButton.transform.SetSiblingIndex(view.quitButton.transform.GetSiblingIndex());
+                view.creditsButton=Button(actions,"Credits","CREDITS",font);view.creditsButton.transform.SetSiblingIndex(view.quitButton.transform.GetSiblingIndex());
                 var rect=actions.GetComponent<RectTransform>();Fit(rect,.075f,.18f,.45f,.49f);
                 actions.GetComponent<UnityEngine.UI.VerticalLayoutGroup>().spacing=4;
                 foreach(var b in new[]{view.newGameButton,view.controlsButton,view.creditsButton,view.quitButton})
@@ -45,12 +45,13 @@ namespace GameJam.UI.Editor
                 var content=contentObject.GetComponent<RectTransform>();content.anchorMin=new Vector2(0,1);content.anchorMax=new Vector2(1,1);content.pivot=new Vector2(.5f,1);content.sizeDelta=Vector2.zero;
                 var group=contentObject.GetComponent<UnityEngine.UI.VerticalLayoutGroup>();group.padding=new RectOffset(16,20,12,24);group.spacing=18;group.childControlWidth=group.childControlHeight=true;group.childForceExpandHeight=false;group.childForceExpandWidth=true;
                 contentObject.GetComponent<UnityEngine.UI.ContentSizeFitter>().verticalFit=UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;scroll.content=content;
-                Section("PROJECT TEAM","WORKING ROSTER / NOT FINAL OR COMPLETE","Devin Padin / Jarheadd1\nDeeFeeCee\nSarah (AceofHome)\nmrdrworm");
-                Section("GAME DEVELOPMENT","PROVISIONAL CONTRIBUTION RECORDS","<b>Devin Padin / Jarheadd1</b>\nGameplay and UI foundation development; technical integration.\n\n<b>DeeFeeCee</b>\nRepository coordination, integration and gameplay mechanics.");
+                Section("PROJECT TEAM","WORKING ROSTER / NOT FINAL OR COMPLETE","Devin Padin / Jarheadd1\nDouglas (DeeFeeCee)\nSarah (AceofHome)\nAlexzander (mrdrworm)");
+                Section("GAME DEVELOPMENT","PROVISIONAL CONTRIBUTION RECORDS","<b>Devin Padin / Jarheadd1</b>\nGameplay and UI foundation development; technical integration.\n\n<b>Douglas (DeeFeeCee)</b>\nRepository coordination, integration and gameplay mechanics.");
                 Section("ART & ANIMATION","PROVISIONAL CONTRIBUTION RECORDS","<b>Sarah (AceofHome)</b>\nArtwork, animation and narrative collaboration.");
-                Section("LEVEL & PUZZLE DESIGN","PROVISIONAL CONTRIBUTION RECORDS","<b>mrdrworm</b>\nLevel and puzzle design.");
+                Section("LEVEL & PUZZLE DESIGN","PROVISIONAL CONTRIBUTION RECORDS","<b>Alexzander (mrdrworm)</b>\nLevel and puzzle design.");
                 Section("TOOLS & TECHNOLOGY","CONFIRMED PROJECT TOOLS","Unity 6000.3.26f1\nC#\nGit\nGitHub");
-                Section("AUDIO & MUSIC","CONFIRMED CONTRIBUTION","<b>DeeFeeCee</b>\nMusic & Sound FX");
+                Section("AUDIO & MUSIC","CONFIRMED CONTRIBUTION","<b>Douglas (DeeFeeCee)</b>\nMusic & Sound FX");
+                Section("TYPOGRAPHY & FONT DESIGN","CONFIRMED CONTRIBUTION","<b>Douglas (DeeFeeCee)</b>\nOriginal Typeface: DeeFont1.17");
                 Section("SPECIAL THANKS","PENDING CONFIRMATION","Acknowledgments will be added after team confirmation.");
                 var barRect=Panel(scrollObject.transform,"ArchiveScrollbar",new Color(.06f,.15f,.19f));Fit(barRect,.975f,0,1,1);barRect.GetComponent<UnityEngine.UI.Image>().raycastTarget=true;
                 var sliding=new GameObject("SlidingArea",typeof(RectTransform));sliding.transform.SetParent(barRect,false);Fit(sliding.GetComponent<RectTransform>(),0,0,1,1);
@@ -59,7 +60,7 @@ namespace GameJam.UI.Editor
                 c.scrollbar=barRect.gameObject.AddComponent<UnityEngine.UI.Scrollbar>();c.scrollbar.direction=UnityEngine.UI.Scrollbar.Direction.BottomToTop;c.scrollbar.handleRect=handle;c.scrollbar.targetGraphic=handle.GetComponent<UnityEngine.UI.Image>();
                 var colors=c.scrollbar.colors;colors.normalColor=cyan;colors.selectedColor=amber;colors.highlightedColor=amber;c.scrollbar.colors=colors;
                 scroll.verticalScrollbar=c.scrollbar;scroll.verticalScrollbarVisibility=UnityEngine.UI.ScrollRect.ScrollbarVisibility.Permanent;
-                c.returnButton=Button(panel,"ReturnFromCredits","RETURN TO MAIN MENU");Fit(c.returnButton.GetComponent<RectTransform>(),.045f,.065f,.43f,.185f);
+                c.returnButton=Button(panel,"ReturnFromCredits","RETURN TO MAIN MENU",font);Fit(c.returnButton.GetComponent<RectTransform>(),.045f,.065f,.43f,.185f);
                 c.scrollbar.navigation=new UnityEngine.UI.Navigation{mode=UnityEngine.UI.Navigation.Mode.Explicit,selectOnRight=c.returnButton};
                 c.returnButton.navigation=new UnityEngine.UI.Navigation{mode=UnityEngine.UI.Navigation.Mode.Explicit,selectOnLeft=c.scrollbar,selectOnUp=c.scrollbar};
                 var hint=Label(panel,"NavigationHint","UP/DOWN / STICK: SCROLL\nRIGHT: RETURN  /  ESC / B: BACK",13,cyan);Fit(hint.rectTransform,.47f,.055f,.97f,.19f);
@@ -87,8 +88,16 @@ namespace GameJam.UI.Editor
         }
         private static void Fit(RectTransform rect,float x0,float y0,float x1,float y1)
         {rect.anchorMin=new Vector2(x0,y0);rect.anchorMax=new Vector2(x1,y1);rect.offsetMin=rect.offsetMax=Vector2.zero;}
-        private static UnityEngine.UI.Button Button(Transform parent,string name,string text)
-        {var obj=(GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(MenuBuilder.ButtonPath),parent);obj.name=name;obj.GetComponentInChildren<TMP_Text>().text=text;return obj.GetComponent<UnityEngine.UI.Button>();}
+        private static UnityEngine.UI.Button Button(Transform parent,string name,string text,TMP_FontAsset font)
+        {
+            var obj=(GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(MenuBuilder.ButtonPath),parent);
+            obj.name=name;
+            var label=obj.GetComponentInChildren<TMP_Text>();
+            label.text=text;
+            label.font=font;
+            label.fontSharedMaterial=font.material;
+            return obj.GetComponent<UnityEngine.UI.Button>();
+        }
         private static void Link(UnityEngine.UI.Button b,UnityEngine.UI.Selectable up,UnityEngine.UI.Selectable down)
         {b.navigation=new UnityEngine.UI.Navigation{mode=UnityEngine.UI.Navigation.Mode.Explicit,selectOnUp=up,selectOnDown=down};}
         [MenuItem("Game Jam/UI/Build Credits Windows Development Player")]

@@ -245,6 +245,12 @@ namespace GameJam.BlueIntegration.Editor
             float localSpriteHeight = sprite.rect.height * fit / (20f * Mathf.Abs(box.transform.lossyScale.y));
             Paint(art, sprite, box.offset + Vector2.up * ((box.size.y - localSpriteHeight) / 2f), -2);
             art.transform.localScale *= fit;
+            if (previousPosition.HasValue)
+            {
+                var position = art.transform.localPosition;
+                position.x = previousPosition.Value.x;
+                art.transform.localPosition = position;
+            }
             if (!AlignTerminalVisual(box, art, roomColliders) && previousPosition.HasValue)
                 art.transform.localPosition = previousPosition.Value;
             var animator = art.GetComponent<Animator>();
