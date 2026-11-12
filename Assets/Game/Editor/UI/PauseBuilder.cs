@@ -51,7 +51,7 @@ namespace GameJam.UI.Editor
 
             c.controlsView = new GameObject("ControlsView", typeof(RectTransform)); c.controlsView.transform.SetParent(panel, false); Fit(c.controlsView.GetComponent<RectTransform>(), 0, 0, 1, 1);
             Text(c.controlsView.transform, "Heading", "CONTROLS", 36, ink, .055f, .78f, .94f, .94f).fontStyle = FontStyles.Bold;
-            Text(c.controlsView.transform, "KeyboardControls", "KEYBOARD\n\nA/D or Left/Right    Move\nW or Up    Jump\nSpace    Dash\nWASD / Arrows    Dash direction\nEscape    Pause / Resume", 20, ink, .055f, .24f, .57f, .77f);
+            Text(c.controlsView.transform, "KeyboardControls", "KEYBOARD\n\nA/D or Left/Right    Move\nW or Up    Jump\nSpace    Dash\nWASD / Arrows    Dash direction\nE    Interact\nEscape    Pause / Resume", 20, ink, .055f, .24f, .57f, .77f);
             Text(c.controlsView.transform, "GamepadControls", "GAMEPAD\n\nLeft stick    Move and aim\nSouth button    Jump\nRight shoulder    Dash\nStart / Menu    Pause / Resume", 20, ink, .59f, .24f, .98f, .77f);
             c.backButton = Button(c.controlsView.transform, "Back", "BACK"); Fit(c.backButton.GetComponent<RectTransform>(), .055f, .09f, .37f, .20f); Link(c.backButton, c.backButton, c.backButton);
             Text(c.controlsView.transform, "BackHint", "ESCAPE / GAMEPAD EAST (B): BACK", 13, teal, .42f, .09f, .97f, .20f);

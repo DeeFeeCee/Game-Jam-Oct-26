@@ -1197,7 +1197,9 @@ MonoBehaviour:
     Space   
     Dash
 
-    WASD / Arrows    Dash direction'
+    WASD / Arrows    Dash direction
+
+    E    Interact'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 7f6324612245d0d46bbddb6053a4bcaf, type: 2}
   m_sharedMaterial: {fileID: 5010614337849436711, guid: 90ae140ae68789e428e1a399ee0c87e1, type: 2}
@@ -3992,7 +3994,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: '<b>Alexzander (mrdrworm)</b>
 
-    Level and puzzle design.'
+    Level, puzzle, and game design.'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 7f6324612245d0d46bbddb6053a4bcaf, type: 2}
   m_sharedMaterial: {fileID: 5010614337849436711, guid: 90ae140ae68789e428e1a399ee0c87e1, type: 2}
