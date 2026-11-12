@@ -8,6 +8,10 @@ namespace GameJam.Movement
         private Behaviour supportOwner;
         private Vector2 appliedSupportVelocity, departedSupportVelocity;
 
+        // Use the velocity applied on this physics step, including on a support reversal.
+        public Vector2 SupportRelativeVelocity => body.linearVelocity - appliedSupportVelocity;
+        public float HorizontalMovementIntent => horizontalInput;
+
         private bool AcceptGroundSupport(RaycastHit2D hit)
         {
             var candidate = hit.rigidbody != null ? hit.rigidbody.GetComponent<IPlayerSupport2D>() : null;
