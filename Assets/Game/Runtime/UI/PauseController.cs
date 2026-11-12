@@ -13,6 +13,8 @@ namespace GameJam.UI
     [DefaultExecutionOrder(-150)]
     public sealed class PauseController : MonoBehaviour
     {
+        public static event System.Action<bool> PauseStateChanged;
+
         public GameObject overlay, rootView, controlsView;
         public EventSystem uiEventSystem;
         public MenuInputScope inputScope;
@@ -114,6 +116,7 @@ namespace GameJam.UI
             rootView.SetActive(true); controlsView.SetActive(false);
             overlay.SetActive(true); uiEventSystem.gameObject.SetActive(true);
             SetButtons(false); status.text = releasePrompt; Select(resumeButton);
+            PauseStateChanged?.Invoke(true);
             return true;
         }
 
@@ -177,11 +180,13 @@ namespace GameJam.UI
         }
         private void Hide()
         {
+            bool wasPaused = IsPaused;
             Time.timeScale = 1f;
             inputScope.enabled = false;
             uiEventSystem.gameObject.SetActive(false); overlay.SetActive(false);
             IsPaused = InputArmed = false;
             RestoreOtherUI();
+            if (wasPaused) PauseStateChanged?.Invoke(false);
         }
         private void SetButtons(bool value)
         { resumeButton.interactable = controlsButton.interactable = mainMenuButton.interactable = backButton.interactable = value; }

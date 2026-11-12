@@ -589,7 +589,8 @@ MonoBehaviour:
   HeliodorPhase2: {fileID: 8300000, guid: b4a9aec39c7df394cbb8c70d79f4252a, type: 3}
   HeliodorPhase3: {fileID: 8300000, guid: 0e495f37e7a785b43b4caa9ed1c9c7b2, type: 3}
   HeliodorPhase4: {fileID: 8300000, guid: 8f98586457e1d3d4699de071940d331a, type: 3}
-  Emergence: {fileID: 8300000, guid: 6b466de9c5755ba41b0113201c278417, type: 3}
+  EmergeJingle: {fileID: 8300000, guid: 6b466de9c5755ba41b0113201c278417, type: 3}
+  Emergence: {fileID: 8300000, guid: 190c44cd5ad66b8438bbafae7da63b1c, type: 3}
 --- !u!1 &4527318684902244931
 GameObject:
   m_ObjectHideFlags: 0

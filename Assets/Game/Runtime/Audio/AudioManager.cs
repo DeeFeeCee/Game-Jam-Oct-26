@@ -1,4 +1,5 @@
-using System.Collections.Generic;
+using System.Collections;
+using GameJam.UI;
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -6,16 +7,27 @@ public class AudioManager : MonoBehaviour
 {
     public static AudioManager Instance;
 
+    private Coroutine musicTransition;
+    private bool hasActiveLevelMusic;
+    private bool menuMusicTransitionPending;
+    private bool pauseMenuOpen;
+    private bool isPauseMusicActive;
+    private SceneIdentity.ZoneType activeLevelZone;
+    private byte activeLevelPhase;
+    private const float MusicTransitionSeconds = 1.142857f; // Half note
+    private const float PauseMusicTransitionSeconds = 0.071429f; // 32nd note
+    private const float EmergeJingleDurationSeconds = 4.571429f;
+
     [Header("----- Audio Mixer -----")]
     [SerializeField] private AudioMixer AudioMixer;
 
     [Header("----- Audio Source -----")]
-    [SerializeField] AudioSource PrimaryMusicSource;
-    [SerializeField] AudioSource Phase1Source;
-    [SerializeField] AudioSource Phase2Source;
-    [SerializeField] AudioSource Phase3Source;
-    [SerializeField] AudioSource Phase4Source;
-    [SerializeField] AudioSource SfxSource;
+    public AudioSource PrimaryMusicSource;
+    public AudioSource Phase1Source;
+    public AudioSource Phase2Source;
+    public AudioSource Phase3Source;
+    public AudioSource Phase4Source;
+    public AudioSource SfxSource;
 
     [Header("----- Audio Clips -----")]
     // Music
@@ -35,10 +47,12 @@ public class AudioManager : MonoBehaviour
     public AudioClip HeliodorPhase2;
     public AudioClip HeliodorPhase3;
     public AudioClip HeliodorPhase4;
+    public AudioClip EmergeJingle;
     public AudioClip Emergence;
     // SFX
 
-    // If you change or remove any sound files (music or sfx), please change or remove the above clips appropriately
+    /* If you change or remove any sound files (music or sfx),
+    please change or remove the above clips appropriately */
 
     private void Awake()
     {
@@ -49,8 +63,16 @@ public class AudioManager : MonoBehaviour
         }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+        PauseController.PauseStateChanged += OnPauseStateChanged;
     }
 
+    private void OnDestroy()
+    {
+        PauseController.PauseStateChanged -= OnPauseStateChanged;
+        if (Instance == this) Instance = null;
+    }
+
+    /*  // If we get around to adding settings
     private void Start()
     {
         // Load volume preferences - Default value is 0.5f
@@ -59,44 +81,364 @@ public class AudioManager : MonoBehaviour
         AudioMixer.SetFloat("musicVolume", Mathf.Log10(musicVolume) * 20);
         AudioMixer.SetFloat("sfxVolume", Mathf.Log10(sfxVolume) * 20);
     }
-    public void PlayMainMenuMusic()
+    */
+
+    public static IEnumerator FadeOutMusic(AudioSource source, float fadeSeconds)
     {
-        if (PrimaryMusicSource.clip == MainMenu)
+        if (source == null) yield break;
+        float startVolume = source.volume;
+        if (!source.isPlaying || startVolume <= 0f)
+        {
+            source.Stop();
+            yield break;
+        }
+
+        if (fadeSeconds <= 0f)
+            source.volume = 0f;
+        else
+        {
+            float elapsed = 0f;
+            while (elapsed < fadeSeconds)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float normalizedTime = Mathf.Clamp01(elapsed / fadeSeconds);
+                /* Ease the dB ramp so it holds its level early, then reaches
+                near-silence only at the end instead of spending much of the
+                fade below audibility */
+                float easedTime = normalizedTime * normalizedTime;
+                float attenuation = Mathf.Pow(10f, -48f * easedTime / 20f);
+                source.volume = startVolume * attenuation;
+                yield return null;
+            }
+        }
+
+        source.volume = 0f;
+        source.Stop();
+        source.volume = startVolume;
+    }
+
+    public IEnumerator FadeOutAllMusic(float fadeSeconds)
+    {
+        Coroutine[] fades =
+        {
+            StartCoroutine(FadeOutMusic(PrimaryMusicSource, fadeSeconds)),
+            StartCoroutine(FadeOutMusic(Phase1Source, fadeSeconds)),
+            StartCoroutine(FadeOutMusic(Phase2Source, fadeSeconds)),
+            StartCoroutine(FadeOutMusic(Phase3Source, fadeSeconds)),
+            StartCoroutine(FadeOutMusic(Phase4Source, fadeSeconds))
+        };
+
+        foreach (Coroutine fade in fades)
+            yield return fade;
+    }
+
+    public void PlaySceneMusicAfterFade(SceneIdentity.SceneType scene,
+    SceneIdentity.ZoneType zone, byte phase)
+    {
+        /* Prologue currently shares the menu track, so we shouldn't fade
+        or restart even if its scene identity reaches this dispatcher */
+        if (scene == SceneIdentity.SceneType.Prologue)
+        {
+            EnsurePrologueMusic();
             return;
-        PrimaryMusicSource.clip = MainMenu;
-        PrimaryMusicSource.Play();
+        }
+
+        /* Avoid restarting the menu track when a transition is routed as MainMenu
+        while that exact track is already playing (including menu -> prologue) */
+        if (scene == SceneIdentity.SceneType.MainMenu &&
+            PrimaryMusicSource != null && PrimaryMusicSource.clip == MainMenu
+            && PrimaryMusicSource.isPlaying)
+            return;
+
+        if (scene == SceneIdentity.SceneType.Level && hasActiveLevelMusic && activeLevelZone == zone)
+        {
+            if (activeLevelPhase == phase) return;
+            StartMusicTransition(CrossfadeLevelPhase(activeLevelPhase, phase, MusicTransitionSeconds));
+            activeLevelPhase = phase;
+            return;
+        }
+
+        StartMusicTransition(PlaySceneMusicAfterFadeRoutine(scene, zone, phase));
+    }
+
+    private void StartMusicTransition(IEnumerator transition)
+    {
+        menuMusicTransitionPending = false;
+        if (musicTransition != null)
+            StopCoroutine(musicTransition);
+        musicTransition = StartCoroutine(transition);
+    }
+
+    private IEnumerator PlaySceneMusicAfterFadeRoutine(SceneIdentity.SceneType scene,
+    SceneIdentity.ZoneType zone, byte phase)
+    {
+        yield return FadeOutAllMusic(MusicTransitionSeconds);
+
+        switch (scene)
+        {
+            case SceneIdentity.SceneType.MainMenu:
+            case SceneIdentity.SceneType.Prologue:
+                PlayMainMenuMusic();
+                break;
+            case SceneIdentity.SceneType.Ending:
+                PlayEndingMusic();
+                break;
+            case SceneIdentity.SceneType.Level:
+                switch (zone)
+                {
+                    case SceneIdentity.ZoneType.Aquamarine: StartZone1Music();
+                    break;
+                    case SceneIdentity.ZoneType.Emerald: StartZone2Music();
+                    break;
+                    case SceneIdentity.ZoneType.Heliodor: StartZone3Music();
+                    break;
+                }
+                SetLevelMusicPhase(phase);
+                hasActiveLevelMusic = true;
+                activeLevelZone = zone;
+                activeLevelPhase = phase;
+                isPauseMusicActive = false;
+                if (pauseMenuOpen)
+                {
+                    isPauseMusicActive = true;
+                    StartMusicTransition(CrossfadePauseMusic(true));
+                }
+                break;
+            default:
+                hasActiveLevelMusic = false;
+                isPauseMusicActive = false;
+                break;
+        }
     }
 
     void StartSound(AudioSource source, AudioClip clip, float volume)
     {
-        if (source.clip == clip)
-            return;
-        source.clip = clip; source.Play(); source.volume = volume;
+        if (source == null || clip == null) return;
+        source.volume = volume;
+        if (source.clip != clip)
+        {
+            source.clip = clip;
+            source.Play();
+        }
+        else if (!source.isPlaying)
+        {
+            source.Play();
+        }
     }
 
-    public void StartZone1Music()
+    public void PlayMainMenuMusic()
     {
-        StartSound(PrimaryMusicSource, AquamarinePause, 0f);
-        StartSound(Phase1Source, AquamarinePhase1, 0f);
-        StartSound(Phase2Source, AquamarinePhase2, 0f);
-        StartSound(Phase3Source, AquamarinePhase3, 0f);
-        StartSound(Phase4Source, AquamarinePhase4, 0f);
+        menuMusicTransitionPending = false;
+        pauseMenuOpen = false;
+        isPauseMusicActive = false;
+        hasActiveLevelMusic = false;
+        if (PrimaryMusicSource != null) PrimaryMusicSource.loop = true;
+        StopLevelMusic();
+        StartSound(PrimaryMusicSource, MainMenu, MusicTransitionSeconds);
     }
-    public void StartZone2Music()
+
+    public void EnsurePrologueMusic()
     {
-        StartSound(PrimaryMusicSource, EmeraldPause, 0f);
-        StartSound(Phase1Source, EmeraldPhase1, 0f);
-        StartSound(Phase2Source, EmeraldPhase2, 0f);
-        StartSound(Phase3Source, EmeraldPhase3, 0f);
-        StartSound(Phase4Source, EmeraldPhase4, 0f);
+        if (menuMusicTransitionPending)
+            return;
+
+        if (PrimaryMusicSource != null && PrimaryMusicSource.clip == MainMenu &&
+            PrimaryMusicSource.isPlaying && PrimaryMusicSource.volume > 0f)
+        {
+            hasActiveLevelMusic = false;
+            return;
+        }
+
+        bool anyMusicPlaying =
+            (PrimaryMusicSource != null && PrimaryMusicSource.isPlaying) ||
+            (Phase1Source != null && Phase1Source.isPlaying) ||
+            (Phase2Source != null && Phase2Source.isPlaying) ||
+            (Phase3Source != null && Phase3Source.isPlaying) ||
+            (Phase4Source != null && Phase4Source.isPlaying);
+
+        if (!anyMusicPlaying)
+        {
+            PlayMainMenuMusic();
+            return;
+        }
+
+        menuMusicTransitionPending = true;
+        if (musicTransition != null)
+            StopCoroutine(musicTransition);
+        musicTransition = StartCoroutine(PlayMenuMusicAfterFade());
     }
-    public void StartZone3Music()
+
+    private IEnumerator PlayMenuMusicAfterFade()
     {
-        StartSound(PrimaryMusicSource, HeliodorPause, 0f);
-        StartSound(Phase1Source, HeliodorPhase1, 0f);
-        StartSound(Phase2Source, HeliodorPhase2, 0f);
-        StartSound(Phase3Source, HeliodorPhase3, 0f);
-        StartSound(Phase4Source, HeliodorPhase4, 0f);
+        yield return FadeOutAllMusic(MusicTransitionSeconds);
+        PlayMainMenuMusic();
+    }
+
+    public void StartZone1Music() => StartZoneMusic(AquamarinePause,
+    AquamarinePhase1, AquamarinePhase2, AquamarinePhase3, AquamarinePhase4);
+    public void StartZone2Music() => StartZoneMusic(EmeraldPause,
+    EmeraldPhase1, EmeraldPhase2, EmeraldPhase3, EmeraldPhase4);
+    public void StartZone3Music() => StartZoneMusic(HeliodorPause,
+    HeliodorPhase1, HeliodorPhase2, HeliodorPhase3, HeliodorPhase4);
+
+    private void StartZoneMusic(AudioClip pause, AudioClip phase1,
+    AudioClip phase2, AudioClip phase3, AudioClip phase4)
+    {
+        if (PrimaryMusicSource != null) PrimaryMusicSource.loop = true;
+        StartSound(PrimaryMusicSource, pause, 0f);
+        StartSound(Phase1Source, phase1, 0f);
+        StartSound(Phase2Source, phase2, 0f);
+        StartSound(Phase3Source, phase3, 0f);
+        StartSound(Phase4Source, phase4, 0f);
+    }
+
+    public void SetLevelMusicPhase(byte phaseId)
+    {
+        AudioSource[] phases = { Phase1Source, Phase2Source, Phase3Source, Phase4Source };
+        for (int i = 0; i < phases.Length; i++)
+            if (phases[i] != null) phases[i].volume = phaseId == i + 1 ? 1f : 0f;
+    }
+
+    private IEnumerator CrossfadeLevelPhase(byte fromPhase, byte toPhase, float fadeSeconds)
+    {
+        AudioSource outgoing = GetPhaseSource(fromPhase);
+        AudioSource incoming = GetPhaseSource(toPhase);
+        if (incoming == null) yield break;
+        if (incoming == outgoing)
+        {
+            incoming.volume = 1f;
+            yield break;
+        }
+
+        AudioSource[] phases = { Phase1Source, Phase2Source, Phase3Source, Phase4Source };
+        foreach (AudioSource phase in phases)
+            if (phase != null && phase != outgoing && phase != incoming)
+                phase.volume = 0f;
+
+        yield return CrossfadeMusicSources(outgoing, incoming, fadeSeconds);
+    }
+
+    private void OnPauseStateChanged(bool paused)
+    {
+        pauseMenuOpen = paused;
+        if (!hasActiveLevelMusic || isPauseMusicActive == paused) return;
+
+        isPauseMusicActive = paused;
+        StartMusicTransition(CrossfadePauseMusic(paused));
+    }
+
+    private IEnumerator CrossfadePauseMusic(bool paused)
+    {
+        AudioSource phase = GetPhaseSource(activeLevelPhase);
+        AudioClip pauseClip = GetPauseMusicClip(activeLevelZone);
+        if (PrimaryMusicSource == null || phase == null || pauseClip == null)
+            yield break;
+
+        float primaryVolume = PrimaryMusicSource.volume;
+        StartSound(PrimaryMusicSource, pauseClip, paused ? 0f : primaryVolume);
+        AudioSource outgoing = paused ? phase : PrimaryMusicSource;
+        AudioSource incoming = paused ? PrimaryMusicSource : phase;
+
+        AudioSource[] phases = { Phase1Source, Phase2Source, Phase3Source,
+        Phase4Source };
+        foreach (AudioSource source in phases)
+            if (source != null && source != phase) source.volume = 0f;
+
+        yield return CrossfadeMusicSources(outgoing, incoming, PauseMusicTransitionSeconds);
+    }
+
+    private IEnumerator CrossfadeMusicSources(AudioSource outgoing,
+    AudioSource incoming, float fadeSeconds)
+    {
+        if (incoming == null) yield break;
+        if (incoming == outgoing)
+        {
+            incoming.volume = 1f;
+            yield break;
+        }
+
+        float outgoingStartVolume = outgoing != null ? outgoing.volume : 0f;
+        if (outgoingStartVolume <= 0f) outgoingStartVolume = 1f;
+        float finalVolume = outgoingStartVolume;
+        incoming.volume = 0f;
+        if (!incoming.isPlaying) incoming.Play();
+
+        if (fadeSeconds <= 0f)
+        {
+            if (outgoing != null) outgoing.volume = 0f;
+            incoming.volume = finalVolume;
+            yield break;
+        }
+
+        float elapsed = 0f;
+        while (elapsed < fadeSeconds)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / fadeSeconds);
+            float easedT = t * t;
+            /* Ease the incoming track while normalizing the pair so their
+            summed gain cannot peak above the outgoing level at the midpoint */
+            float outgoingGain = Mathf.Cos(easedT * Mathf.PI * 0.5f);
+            float incomingGain = Mathf.Sin(easedT * Mathf.PI * 0.5f);
+            float gainSum = outgoingGain + incomingGain;
+            if (outgoing != null) outgoing.volume = outgoingStartVolume * outgoingGain / gainSum;
+            incoming.volume = outgoingStartVolume * incomingGain / gainSum;
+            yield return null;
+        }
+
+        if (outgoing != null) outgoing.volume = 0f;
+        incoming.volume = finalVolume;
+    }
+
+    private AudioClip GetPauseMusicClip(SceneIdentity.ZoneType zone)
+        => zone switch
+    {
+        SceneIdentity.ZoneType.Aquamarine => AquamarinePause,
+        SceneIdentity.ZoneType.Emerald => EmeraldPause,
+        SceneIdentity.ZoneType.Heliodor => HeliodorPause,
+        _ => null
+    };
+
+    private AudioSource GetPhaseSource(byte phase) => phase switch
+    {
+        1 => Phase1Source,
+        2 => Phase2Source,
+        3 => Phase3Source,
+        4 => Phase4Source,
+        _ => null
+    };
+
+    private void StopLevelMusic()
+    {
+        AudioSource[] phases = { Phase1Source, Phase2Source, Phase3Source,
+        Phase4Source };
+        foreach (AudioSource source in phases)
+            if (source != null) source.Stop();
+    }
+
+    public void PlayEndingMusic()
+    {
+        pauseMenuOpen = false;
+        isPauseMusicActive = false;
+        hasActiveLevelMusic = false;
+        StopLevelMusic();
+        if (PrimaryMusicSource == null || EmergeJingle == null) return;
+
+        PrimaryMusicSource.loop = false;
+        musicTransition = StartCoroutine(PlayEndingMusicSequence());
+    }
+
+    private IEnumerator PlayEndingMusicSequence()
+    {
+        StartSound(PrimaryMusicSource, EmergeJingle, 1f);
+        yield return new WaitForSecondsRealtime(EmergeJingleDurationSeconds);
+
+        if (PrimaryMusicSource == null ||
+            PrimaryMusicSource.clip != EmergeJingle || Emergence == null)
+            yield break;
+
+        PrimaryMusicSource.loop = true;
+        StartSound(PrimaryMusicSource, Emergence, 1f);
     }
     /*
     public void PlaySoundCorrect()
