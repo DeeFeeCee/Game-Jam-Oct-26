@@ -118,6 +118,7 @@ namespace GameJam.UI
             }
 
             // Reset after the departing player is unloaded. NewRunStarted can re-enable a linked player.
+            GameJam.Levels.RunTimer.Instance?.ArmNewRun();
             var failedBank = bank;
             load.completed += _ =>
             {

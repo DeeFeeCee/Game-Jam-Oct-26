@@ -1,4 +1,5 @@
 using System;
+using GameJam.Levels;
 using GameJam.Resources;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -33,7 +34,8 @@ namespace GameJam.UI
                 IsLoading=false;Status="New run could not be initialized.";StateChanged?.Invoke();return false;
             }
             // Direct gameplay launchers can still let LevelSetup supply a missing bank.
-            SceneManager.LoadSceneAsync(gameplayScene,LoadSceneMode.Single);
+            if (SceneManager.LoadSceneAsync(gameplayScene, LoadSceneMode.Single) != null)
+                RunTimer.Instance?.ArmNewRun();
             return true;
         }
     }

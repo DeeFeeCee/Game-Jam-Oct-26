@@ -556,7 +556,7 @@ namespace GameJam.LevelAuthoring.Tests
             yield return Load(); var hud = Object.FindFirstObjectByType<MobilityReserveHUDController>();
             Assert.AreEqual(5, hud.DisplayedCharges);
             actor.RequestDash(Vector2.up); yield return new WaitForFixedUpdate(); yield return null;
-            Assert.AreEqual(4, hud.DisplayedCharges); Assert.AreEqual("04", hud.counter.text);
+            Assert.AreEqual(4, hud.DisplayedCharges); Assert.AreEqual("4", hud.counter.text);
             Assert.AreSame(RunDashBank.Instance, hud.BoundBank);
         }
 

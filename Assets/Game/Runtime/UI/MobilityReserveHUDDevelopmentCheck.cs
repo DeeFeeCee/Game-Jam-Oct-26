@@ -50,7 +50,7 @@ namespace GameJam.UI
             if (!CheckDisplay(3, "After two actual dashes")) yield break; yield return Capture("three.png");
             yield return SpendActualDash(); yield return SpendActualDash();
             if (!CheckDisplay(1, "Critical reserve")) yield break;
-            if (!Check(FindFirstObjectByType<MobilityReserveHUDController>().warning.text == "NEXT DASH WILL TERMINATE RUN", "Mandatory fatal-dash warning")) yield break;
+            if (!Check(FindFirstObjectByType<MobilityReserveHUDController>().IsCritical, "Critical last-charge indicator")) yield break;
             yield return Capture("one-critical.png"); yield return SpendActualDash();
             if (!CheckDisplay(0, "Fatal dash")) yield break;
             double deadline = Time.realtimeSinceStartupAsDouble + 10;
@@ -106,10 +106,11 @@ namespace GameJam.UI
         private bool CheckDisplay(int count, string phase)
         {
             var bank = RunDashBank.Instance; var hud = FindFirstObjectByType<MobilityReserveHUDController>();
-            bool correct = bank != null && hud != null && bank.RemainingCharges == count && hud.DisplayedCharges == count && hud.counter.text == count.ToString("D2") && hud.Segments.Count == bank.StartingDashCount;
-            if (correct) for (int i = 0; i < hud.Segments.Count; i++)
-                correct &= hud.Segments[i].color == (i >= count ? hud.inactiveColor : (count == 1 ? hud.criticalColor : hud.activeColor));
-            Record(phase); return Check(correct, phase + " synchronized bank, counter and segments");
+            bool correct = bank != null && hud != null && bank.RemainingCharges == count &&
+                hud.DisplayedCharges == count && hud.counter.text == count.ToString() &&
+                hud.dashIcon.color == (count == 1 ? hud.criticalColor : count == 0 ? hud.exhaustedColor : hud.activeColor);
+            Record(phase);
+            return Check(correct, phase + " synchronized bank, counter and icon");
         }
         private IEnumerator WaitForPause(PauseController pause)
         {
