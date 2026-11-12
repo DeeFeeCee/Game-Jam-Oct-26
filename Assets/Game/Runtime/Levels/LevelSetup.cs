@@ -25,9 +25,11 @@ namespace GameJam.Levels
         {
             var bank = RunDashBank.Instance;
             if (bank == null || Player == null) return;
-            if (bank.IsRetryEntry(gameObject.scene) && Player.TryGetComponent(out PlayerMovementInput2D input))
+            bool retry = bank.IsRetryEntry(gameObject.scene);
+            if (retry && Player.TryGetComponent(out PlayerMovementInput2D input))
                 input.RequireNeutralInput();
             bank.RecordLevelEntry(gameObject.scene);
+            RunTimer.Instance?.EnterRoom(gameObject.scene, Player.GetComponent<PlayerMovement2D>(), bank, retry);
         }
     }
 }

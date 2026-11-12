@@ -151,7 +151,8 @@ namespace GameJam.UI
             Time.timeScale = 1f;
             ClearPlayerRequests(preserveBufferedJump: false);
             // Keep input suspended until the old scene unloads. Never initialize a run here.
-            SceneManager.LoadSceneAsync(mainMenuScene, LoadSceneMode.Single);
+            if (SceneManager.LoadSceneAsync(mainMenuScene, LoadSceneMode.Single) != null)
+                GameJam.Levels.RunTimer.Instance?.Abandon();
             return true;
         }
 

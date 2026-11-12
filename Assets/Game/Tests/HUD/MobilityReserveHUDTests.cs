@@ -78,10 +78,12 @@ namespace GameJam.UI.Tests
         }
         private void AssertDisplay(int count)
         {
-            Assert.AreEqual(bank, hud.BoundBank); Assert.AreEqual(count, hud.DisplayedCharges); Assert.AreEqual(count.ToString("D2"), hud.counter.text);
-            Assert.AreEqual(bank.StartingDashCount, hud.Segments.Count);
-            for (int i = 0; i < hud.Segments.Count; i++)
-                Assert.AreEqual(i >= count ? hud.inactiveColor : (count == 1 ? hud.criticalColor : hud.activeColor), hud.Segments[i].color, "Segment " + i);
+            Assert.AreEqual(bank, hud.BoundBank);
+            Assert.AreEqual(count, hud.DisplayedCharges);
+            Assert.AreEqual(count.ToString(), hud.counter.text);
+            var color = count == 1 ? hud.criticalColor : count == 0 ? hud.exhaustedColor : hud.activeColor;
+            Assert.AreEqual(color, hud.dashIcon.color);
+            Assert.AreEqual(color, hud.counter.color);
         }
         private IEnumerator WaitForLoad(string path, int oldHandle)
         {
@@ -101,26 +103,26 @@ namespace GameJam.UI.Tests
             serialized.ApplyModifiedPropertiesWithoutUndo(); bank.InitializeNewRun();
         }
         [UnityTest] public IEnumerator DirectEntryBindsAuthoritativeStartingBalance()
-        { AssertDisplay(5); Assert.AreEqual(5, hud.DisplayedStartingCount); Assert.IsEmpty(hud.warning.text); yield return null; }
-        [UnityTest] public IEnumerator FiveChargesHaveFiveTealSegments()
-        { Assert.AreEqual(5, hud.Segments.Count); Assert.IsTrue(hud.Segments.All(i => i.color == hud.activeColor)); yield return null; }
+        { AssertDisplay(5); Assert.AreEqual(5, hud.DisplayedStartingCount);  yield return null; }
+        [UnityTest] public IEnumerator FiveChargesShowTealIconAndExactCounter()
+        { AssertDisplay(5); Assert.NotNull(hud.dashIcon.sprite); yield return null; }
         [UnityTest] public IEnumerator SpendingUpdatesSynchronouslyInTheResourceCallback()
         {
             bool observed = false; bank.ChargesChanged += count => { observed = true; Assert.AreEqual(count, hud.DisplayedCharges); };
             bank.TrySpendDash(); Assert.IsTrue(observed); AssertDisplay(4); yield return null;
         }
-        [UnityTest] public IEnumerator ThreeAndTwoChargesHaveMatchingSegmentsAndNumerals()
-        { SpendTo(3); AssertDisplay(3); SpendTo(2); AssertDisplay(2); Assert.IsEmpty(hud.warning.text); yield return null; }
-        [UnityTest] public IEnumerator OneChargeShowsMandatoryWarningAndCriticalStyling()
+        [UnityTest] public IEnumerator ThreeAndTwoChargesHaveMatchingIconAndNumerals()
+        { SpendTo(3); AssertDisplay(3); SpendTo(2); AssertDisplay(2);  yield return null; }
+        [UnityTest] public IEnumerator OneChargeShowsCriticalStyling()
         {
             SpendTo(1); AssertDisplay(1); Assert.IsTrue(hud.IsCritical); Assert.AreEqual(hud.criticalColor, hud.counter.color);
-            Assert.AreEqual("NEXT DASH WILL TERMINATE RUN", hud.warning.text); yield return null;
+            Assert.AreEqual(hud.criticalColor, hud.dashIcon.color); yield return null;
         }
         [UnityTest] public IEnumerator FatalDashStillHasNoTravelAndDisplaysZero()
         {
             SpendTo(1); Vector2 before = body.position; actor.RequestDash(Vector2.up); yield return new WaitForFixedUpdate();
             AssertDisplay(0); Assert.AreEqual(before, body.position); Assert.IsFalse(body.simulated); Assert.IsFalse(actor.enabled);
-            Assert.AreEqual("ALLOCATION EXHAUSTED", hud.warning.text); Assert.IsFalse(hud.IsCritical);
+            Assert.AreEqual(hud.exhaustedColor, hud.dashIcon.color); Assert.IsFalse(hud.IsCritical);
         }
         [UnityTest] public IEnumerator GameOverKeepsVisualAndInputPriority()
         {
@@ -212,8 +214,8 @@ namespace GameJam.UI.Tests
         [UnityTest] public IEnumerator MissingBankShowsOfflineWithoutCreatingResources()
         {
             Object.Destroy(bank.gameObject); yield return null; yield return null;
-            Assert.IsNull(RunDashBank.Instance); Assert.IsNull(hud.BoundBank); Assert.AreEqual("--", hud.counter.text); Assert.AreEqual("MONITOR OFFLINE", hud.warning.text);
-            Assert.AreEqual(0, hud.Segments.Count); Assert.AreEqual(0, Object.FindObjectsByType<RunDashBank>(FindObjectsSortMode.None).Length);
+            Assert.IsNull(RunDashBank.Instance); Assert.IsNull(hud.BoundBank); Assert.AreEqual("--", hud.counter.text); Assert.AreEqual(hud.unavailableColor, hud.dashIcon.color);
+            Assert.AreEqual(0, Object.FindObjectsByType<RunDashBank>(FindObjectsSortMode.None).Length);
         }
         [UnityTest] public IEnumerator LateReplacementBankBindsItsOwnAllocation()
         {
@@ -239,25 +241,20 @@ namespace GameJam.UI.Tests
         }
         [UnityTest] public IEnumerator ReenableReadsChargesSpentWhileDisabled()
         { hud.enabled = false; SpendTo(2); hud.enabled = true; AssertDisplay(2); yield return null; }
-        [UnityTest] public IEnumerator OtherPositiveAllocationsCreateCorrectSegmentsWithoutClipping()
+        [UnityTest] public IEnumerator OtherPositiveAllocationsDisplayExactNumerals()
         {
-            foreach (int count in new[] { 1, 3, 8, 17, 101 })
+            foreach (int count in new[] { 1, 3, 8, 17, 101, int.MaxValue })
             {
-                SetAllocation(count); AssertDisplay(count); yield return null; Canvas.ForceUpdateCanvases();
-                Assert.IsTrue(hud.segmentLayout.cellSize.x > 0 && hud.segmentLayout.cellSize.y > 0);
-                foreach (var image in hud.Segments)
-                {
-                    var corners = new Vector3[4]; image.rectTransform.GetWorldCorners(corners);
-                    foreach (var point in corners)
-                    {
-                        var local = hud.segmentArea.InverseTransformPoint(point); var bounds = hud.segmentArea.rect;
-                        Assert.IsTrue(local.x >= bounds.xMin - .01f && local.x <= bounds.xMax + .01f && local.y >= bounds.yMin - .01f && local.y <= bounds.yMax + .01f, "Segment outside compact area at " + count);
-                    }
-                }
+                SetAllocation(count);
+                AssertDisplay(count);
+                yield return null;
+                Canvas.ForceUpdateCanvases();
+                hud.counter.ForceMeshUpdate();
+                Assert.IsFalse(hud.counter.isTextOverflowing, "Counter must fit the allocation");
             }
         }
         [UnityTest] public IEnumerator SingleStartingChargeIsImmediatelyCritical()
-        { SetAllocation(1); AssertDisplay(1); Assert.AreEqual("NEXT DASH WILL TERMINATE RUN", hud.warning.text); yield return null; }
+        { SetAllocation(1); AssertDisplay(1); Assert.AreEqual(hud.criticalColor, hud.dashIcon.color); yield return null; }
         [UnityTest] public IEnumerator RenderingNeverSpendsOrResetsResources()
         {
             SpendTo(2); int changed = 0, resets = 0, failures = 0;
@@ -265,16 +262,27 @@ namespace GameJam.UI.Tests
             for (int i = 0; i < 100; i++) hud.RefreshPresentation(); yield return null;
             Assert.AreEqual(2, bank.RemainingCharges); Assert.IsFalse(bank.IsGameOver); Assert.AreEqual(0, changed); Assert.AreEqual(0, resets); Assert.AreEqual(0, failures);
         }
-        [UnityTest] public IEnumerator SpendingAndIdleFramesReuseTheSegmentObjects()
+        [UnityTest] public IEnumerator SpendingAndIdleFramesReuseTheCompactDisplay()
         {
-            var ids = hud.Segments.Select(i => i.GetInstanceID()).ToArray(); SpendTo(2);
+            var icon = hud.dashIcon;
+            var counter = hud.counter;
+            SpendTo(2);
             for (int i = 0; i < 12; i++) yield return null;
-            CollectionAssert.AreEqual(ids, hud.Segments.Select(i => i.GetInstanceID()).ToArray()); AssertDisplay(2);
+            Assert.AreSame(icon, hud.dashIcon);
+            Assert.AreSame(counter, hud.counter);
+            AssertDisplay(2);
         }
-        [UnityTest] public IEnumerator LayoutColumnsCanBeConfiguredWithoutChangingAllocation()
+
+        [UnityTest] public IEnumerator RejectedDashDoesNotChangeTheDisplay()
         {
-            hud.maximumColumns = 3; hud.RefreshPresentation(); Canvas.ForceUpdateCanvases();
-            Assert.AreEqual(3, hud.segmentLayout.constraintCount); AssertDisplay(5); yield return null;
+            actor.RequestDash(Vector2.up);
+            yield return new WaitForFixedUpdate();
+            Assert.IsTrue(actor.IsDashing);
+            AssertDisplay(4);
+            actor.RequestDash(Vector2.up);
+            yield return new WaitForFixedUpdate();
+            AssertDisplay(4);
+            Assert.AreEqual(4, bank.RemainingCharges);
         }
         [UnityTest] public IEnumerator HUDHasNoInputOwnerOrPointerInterception()
         {
@@ -307,23 +315,35 @@ namespace GameJam.UI.Tests
             var clone = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(MobilityReserveHUDBuilder.PrefabPath), parent.transform);
             var c = clone.GetComponent<MobilityReserveHUDController>(); var canvas = clone.GetComponent<Canvas>(); canvas.renderMode = RenderMode.WorldSpace;
             c.enabled = false; parent.SetActive(true);
-            var root = clone.GetComponent<RectTransform>();
-            foreach (var size in new[] { new Vector2(1280, 720), new Vector2(1920, 1080), new Vector2(2560, 1440), new Vector2(1024, 768) })
+            var root = clone.GetComponent<RectTransform>(); root.localScale = Vector3.one;
+            foreach (var size in new[] { new Vector2(1280, 720), new Vector2(1920, 1080), new Vector2(2560, 1440), new Vector2(1366, 900) })
             {
                 // Same .5-match CanvasScaler equation; actual output dimensions are checked in standalone.
                 float scale = Mathf.Sqrt((size.x / 1280f) * (size.y / 720f));
                 root.sizeDelta = size / scale; Canvas.ForceUpdateCanvases();
-                var corners = new Vector3[4]; c.panel.GetWorldCorners(corners);
-                foreach (var point in corners) Assert.IsTrue(root.rect.Contains(root.InverseTransformPoint(point)), "Panel outside " + size);
-                Assert.GreaterOrEqual(c.counter.fontSize * scale, 24); Assert.GreaterOrEqual(c.warning.fontSize * scale, 10);
+                                var timerPanel = (RectTransform)c.timer.transform.parent;
+                var corners = new Vector3[4];
+                foreach (var panel in new[] { c.panel, timerPanel })
+                {
+                    panel.GetWorldCorners(corners);
+                    foreach (var point in corners)
+                        Assert.IsTrue(root.rect.Contains(root.InverseTransformPoint(point)), "Panel outside " + size);
+                }
+                c.panel.GetWorldCorners(corners);
+                float dashRight = corners[2].x;
+                timerPanel.GetWorldCorners(corners);
+                Assert.Less(dashRight, corners[0].x);
+                c.timer.text = "RUN TIME  596:31:23.64";
+                c.timer.ForceMeshUpdate();
+                Assert.IsFalse(c.timer.isTextOverflowing);
             }
             Object.Destroy(parent); yield return null;
         }
         [Test] public void PrefabKeepsEditableReferencesAndSortingBelowModals()
         {
             var p = AssetDatabase.LoadAssetAtPath<GameObject>(MobilityReserveHUDBuilder.PrefabPath).GetComponent<MobilityReserveHUDController>();
-            Assert.NotNull(p.panel.GetComponent<UnityEngine.UI.Image>()); Assert.NotNull(p.segmentTemplate); Assert.NotNull(p.counter); Assert.NotNull(p.warning);
-            Assert.AreEqual(10, p.GetComponent<Canvas>().sortingOrder); Assert.AreEqual(new Vector2(0, 1), p.panel.anchorMin); Assert.IsFalse(p.segmentTemplate.gameObject.activeSelf);
+            Assert.NotNull(p.panel.GetComponent<UnityEngine.UI.Image>()); Assert.NotNull(p.dashIcon.sprite); Assert.NotNull(p.counter); Assert.NotNull(p.timer);
+            Assert.AreEqual(10, p.GetComponent<Canvas>().sortingOrder); Assert.AreEqual(new Vector2(0, 1), p.panel.anchorMin); Assert.IsNull(p.panel.Find("ChargeSegments"));
         }
     }
 }

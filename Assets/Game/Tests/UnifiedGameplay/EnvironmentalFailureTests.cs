@@ -70,8 +70,8 @@ namespace GameJam.UnifiedGameplay.Tests
             var failure = Object.FindFirstObjectByType<GameOverController>();
             Assert.IsTrue(failure.IsVisible); Assert.AreEqual("SUBJECT INTEGRITY LOST", failure.failureReason.text);
             var hud = Object.FindFirstObjectByType<MobilityReserveHUDController>();
-            Assert.AreEqual(4, hud.DisplayedCharges); Assert.AreEqual("04", hud.counter.text);
-            Assert.AreEqual("SUBJECT INTEGRITY LOST", hud.warning.text);
+            Assert.AreEqual(4, hud.DisplayedCharges); Assert.AreEqual("4", hud.counter.text);
+            Assert.AreEqual(hud.activeColor, hud.dashIcon.color);
         }
         [UnityTest] public IEnumerator ExhaustionStillHasZeroBalanceAndFatalZeroTravel()
         {

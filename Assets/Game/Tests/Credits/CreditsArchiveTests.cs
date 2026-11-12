@@ -77,7 +77,7 @@ namespace GameJam.UI.Tests
         }
 
         [Test]
-        public void ConfirmedDeeFontIsBakedAndScopedToMenuAndPause()
+        public void ConfirmedDeeFontIsBakedAndScopedToMenuPauseAndGameplayHUD()
         {
             const string folder = "Assets/Game/UI/Fonts/";
             var font = AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>(folder + "DeeFont1.17 SDF.asset");
@@ -88,7 +88,7 @@ namespace GameJam.UI.Tests
             string hash = System.BitConverter.ToString(sha.ComputeHash(System.IO.File.ReadAllBytes(folder + "DeeFont1.17.ttf"))).Replace("-", "");
             Assert.AreEqual("531F50D6BAD6D243FA4BC31343B5EA0227759BA4EE532B4EA110F5B75B4F5CF7", hash);
 
-            foreach (var path in new[] { MenuBuilder.PrefabPath, PauseBuilder.PrefabPath })
+            foreach (var path in new[] { MenuBuilder.PrefabPath, PauseBuilder.PrefabPath, MobilityReserveHUDBuilder.PrefabPath })
             {
                 var labels = AssetDatabase.LoadAssetAtPath<GameObject>(path).GetComponentsInChildren<TMPro.TMP_Text>(true);
                 Assert.IsNotEmpty(labels);
@@ -103,8 +103,7 @@ namespace GameJam.UI.Tests
             }
 
             Assert.AreNotSame(font, TMPro.TMP_Settings.defaultFontAsset);
-            foreach (var path in new[] { MenuBuilder.ButtonPath, "Assets/Game/UI/Resources/UI/GameOver.prefab",
-                "Assets/Game/UI/Resources/UI/MobilityReserveHUD.prefab" })
+            foreach (var path in new[] { MenuBuilder.ButtonPath, "Assets/Game/UI/Resources/UI/GameOver.prefab" })
             {
                 var labels = AssetDatabase.LoadAssetAtPath<GameObject>(path).GetComponentsInChildren<TMPro.TMP_Text>(true);
                 Assert.IsNotEmpty(labels);

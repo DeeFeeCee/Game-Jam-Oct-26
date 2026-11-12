@@ -95,6 +95,7 @@ namespace GameJam.UI.Editor
             view.newGameButton=InstanceButton(actions.transform,"NewGame","NEW GAME");view.controlsButton=InstanceButton(actions.transform,"Controls","CONTROLS");view.quitButton=InstanceButton(actions.transform,"Quit","QUIT");
             Link(view.newGameButton,view.newGameButton,view.controlsButton);Link(view.controlsButton,view.newGameButton,view.quitButton);Link(view.quitButton,view.controlsButton,view.quitButton);
             var status=Text(main,"Status","",16,Ink);Anchors(status.rectTransform,.075f,.105f,.54f,.175f);view.status=status;
+            AddBestTime(view);
 
             var art=Panel(main,"IllustrationPanelPlaceholder",new Color(.045f,.105f,.15f));Anchors(art,.59f,.20f,.925f,.84f);
             var border=art.gameObject.AddComponent<UnityEngine.UI.Outline>();border.effectColor=new Color(.14f,.37f,.40f);border.effectDistance=new Vector2(2,-2);
@@ -129,6 +130,27 @@ namespace GameJam.UI.Editor
             AssetDatabase.SaveAssets();
             if(batchRequest)EditorApplication.Exit(0);
         }
+        internal static void AddBestTime(MainMenuView view)
+        {
+            if (view.bestTime != null) return;
+            var menuFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(ProductionMenuFontPath);
+            if (menuFont == null || !menuFont.HasCharacters("BEST TIME 0123456789:.-"))
+                throw new InvalidOperationException("DeeFont must cover the best-time display.");
+            var label = new GameObject("BestTime", typeof(RectTransform), typeof(TextMeshProUGUI));
+            label.transform.SetParent(view.mainPanel.transform, false);
+            var text = label.GetComponent<TextMeshProUGUI>();
+            text.font = menuFont;
+            text.fontSharedMaterial = menuFont.material;
+            text.text = "BEST TIME  --:--.--";
+            text.fontSize = 20;
+            text.color = Ink;
+            text.alignment = TextAlignmentOptions.MidlineRight;
+            text.raycastTarget = false;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            Anchors(text.rectTransform, .59f, .115f, .925f, .18f);
+            view.bestTime = text;
+        }
+
         private static RectTransform Panel(Transform parent,string name,Color color)
         {
             var go=new GameObject(name,typeof(RectTransform),typeof(UnityEngine.UI.Image));if(parent!=null)go.transform.SetParent(parent,false);

@@ -41,12 +41,14 @@ namespace GameJam.Levels
             Rigidbody2D body = actor.GetComponent<Rigidbody2D>();
             body.linearVelocity = Vector2.zero;
             body.simulated = false;
-            StartCoroutine(LoadDestination());
+            StartCoroutine(LoadDestination(actor));
             return true;
         }
-        private IEnumerator LoadDestination()
+        private IEnumerator LoadDestination(PlayerMovement2D actor)
         {
-            yield return SceneManager.LoadSceneAsync(destinationScene, LoadSceneMode.Single);
+            var load = SceneManager.LoadSceneAsync(destinationScene, LoadSceneMode.Single);
+            if (load != null) RunTimer.Instance?.AcceptExit(gameObject.scene, actor, destinationScene);
+            yield return load;
         }
     }
 }

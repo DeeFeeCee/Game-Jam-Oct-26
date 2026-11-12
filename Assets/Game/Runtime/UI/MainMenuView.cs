@@ -1,3 +1,4 @@
+using GameJam.Levels;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -12,7 +13,7 @@ namespace GameJam.UI
         public UnityEngine.UI.Button newGameButton,controlsButton,quitButton,backButton;
         public UnityEngine.UI.Button creditsButton;
         public CreditsArchiveView credits;
-        public TMP_Text status;
+        public TMP_Text status, bestTime;
         public bool ControlsOpen=>controlsPanel.activeSelf;
         public bool CreditsOpen=>credits!=null&&credits.IsOpen;
         public bool QuitRequested { get; private set; }
@@ -23,7 +24,7 @@ namespace GameJam.UI
             if(creditsButton!=null)creditsButton.onClick.AddListener(OpenCredits);
             if(credits!=null){credits.returnButton.onClick.AddListener(CloseCredits);credits.Hide();}
             inputScope.CancelPressed+=Cancel;launcher.StateChanged+=RefreshLoading;
-            controlsPanel.SetActive(false);mainPanel.SetActive(true);RefreshLoading();Select(newGameButton.gameObject);
+            controlsPanel.SetActive(false);mainPanel.SetActive(true);RefreshLoading();RefreshBestTime();Select(newGameButton.gameObject);
         }
         private void Start()=>Select(newGameButton.gameObject);
         private void OnDisable()
@@ -49,7 +50,7 @@ namespace GameJam.UI
         public void CloseControls()
         {
             if(!ControlsOpen)return;
-            Select(null);controlsPanel.SetActive(false);mainPanel.SetActive(true);Select(controlsButton.gameObject);
+            Select(null);controlsPanel.SetActive(false);mainPanel.SetActive(true);RefreshBestTime();Select(controlsButton.gameObject);
         }
         public void OpenCredits()
         {
@@ -59,9 +60,16 @@ namespace GameJam.UI
         public void CloseCredits()
         {
             if(!CreditsOpen)return;
-            credits.Hide();mainPanel.SetActive(true);Select(creditsButton.gameObject);
+            credits.Hide();mainPanel.SetActive(true);RefreshBestTime();Select(creditsButton.gameObject);
         }
         private void Cancel(){if(CreditsOpen)CloseCredits();else if(ControlsOpen)CloseControls();}
+        public void RefreshBestTime()
+        {
+            if (bestTime == null) return;
+            int record = RunTimer.BestMilliseconds;
+            bestTime.text = "BEST TIME  " + (record > 0 ? RunBestTime.Format(record) : "--:--.--");
+        }
+
         private void RefreshLoading()
         {
             newGameButton.interactable=controlsButton.interactable=quitButton.interactable=!launcher.IsLoading;
