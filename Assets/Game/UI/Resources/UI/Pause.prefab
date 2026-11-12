@@ -1921,6 +1921,8 @@ MonoBehaviour:
 
     WASD / Arrows    Dash direction
 
+    E    Interact
+
     Escape    Pause / Resume'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 90ae140ae68789e428e1a399ee0c87e1, type: 2}

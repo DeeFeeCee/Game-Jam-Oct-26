@@ -118,6 +118,61 @@ namespace GameJam.UnifiedGameplay.Tests
             Assert.That(Vector2.Angle(displacement, expected), Is.LessThan(.5f));
         }
 
+        [UnityTest]
+        public IEnumerator MirroredBarrelTracksAroundItsMountWithAFixedMuzzle()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<Turret2D>("Assets/Game/Prefabs/Turret.prefab");
+            var turret = Own(Object.Instantiate(prefab.gameObject)).GetComponent<Turret2D>();
+            turret.SetFiring(false);
+            var art = turret.transform.Find("Environment turret art");
+            var barrel = art.Find("Barrel");
+            var mount = art.Find("Mount");
+            art.localScale = new Vector3(-1, 1, 1);
+            var pivot = new Vector3(mount.localPosition.x, barrel.localPosition.y, barrel.localPosition.z);
+            float radius = Vector3.Distance(barrel.localPosition, pivot);
+            Vector3 mountPosition = mount.position;
+            Vector3 muzzlePosition = turret.muzzle.position;
+            Quaternion rest = barrel.localRotation;
+            var player = SpawnLevelPlayer(new Vector2(5, 3)).Player.GetComponent<Rigidbody2D>();
+
+            yield return null;
+            Assert.AreEqual(rest, barrel.localRotation, "Fixed turret keeps its authored pose.");
+            turret.aimAtPlayer = true;
+            foreach (var target in new[] { new Vector2(5, 3), new Vector2(-5, 6), new Vector2(-5, -4) })
+            {
+                player.position = target;
+                yield return null;
+                yield return null;
+                AssertHeading(barrel.TransformVector(Vector3.left), target - (Vector2)muzzlePosition);
+                Assert.That(Vector3.Distance(barrel.localPosition, pivot), Is.EqualTo(radius).Within(.001f));
+                Assert.AreEqual(mountPosition, mount.position);
+                Assert.AreEqual(muzzlePosition, turret.muzzle.position);
+            }
+
+            var lastPose = barrel.localRotation;
+            Time.timeScale = 0;
+            player.position = new Vector2(6, 6);
+            yield return new WaitForSecondsRealtime(.05f);
+            Assert.AreEqual(lastPose, barrel.localRotation, "The barrel stays still during Pause.");
+
+            Time.timeScale = 1;
+            yield return null;
+            yield return null;
+            AssertHeading(barrel.TransformVector(Vector3.left), player.position - (Vector2)muzzlePosition);
+            lastPose = barrel.localRotation;
+            player.gameObject.SetActive(false);
+            yield return null;
+            yield return null;
+            Assert.AreEqual(lastPose, barrel.localRotation, "The barrel holds its last pose without a player.");
+
+            player.gameObject.SetActive(true);
+            Assert.IsTrue(Bank.TryFailEnvironment());
+            player.position = new Vector2(-6, -3);
+            yield return null;
+            yield return null;
+            Assert.AreEqual(lastPose, barrel.localRotation, "Game Over freezes tracking.");
+        }
+
         [UnityTest] public IEnumerator FixedModeIgnoresTheLevelPlayerAndKeepsItsDefaultOrigin()
         {
             SpawnLevelPlayer(new Vector2(-8, 10));

@@ -51,6 +51,8 @@ MonoBehaviour:
   muzzle: {fileID: 5983512615172756785}
   firingDirection: {x: -1, y: 0}
   aimAtPlayer: 0
+  aimingBarrel: {fileID: 1769329204944416052}
+  barrelMount: {fileID: 7147183037377023446}
   shotInterval: 0.75
   initialDelay: 1
   projectileSpeed: 3

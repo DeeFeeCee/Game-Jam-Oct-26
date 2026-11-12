@@ -108,7 +108,7 @@ namespace GameJam.UI.Editor
 
             var controls=Panel(canvas.transform,"ControlsView",new Color(.035f,.085f,.125f));Anchors(controls,.075f,.15f,.925f,.86f);view.controlsPanel=controls.gameObject;
             var controlsTitle=Text(controls,"Heading","CONTROLS",36,Ink);controlsTitle.fontStyle=FontStyles.Bold;Anchors(controlsTitle.rectTransform,.055f,.78f,.94f,.94f);
-            var keyboard=Text(controls,"KeyboardControls","KEYBOARD\n\nA/D or Left/Right    Move\nW or Up    Jump\nSpace    Dash\nWASD / Arrows    Dash direction",22,Ink);Anchors(keyboard.rectTransform,.055f,.23f,.54f,.77f);
+            var keyboard=Text(controls,"KeyboardControls","KEYBOARD\n\nA/D or Left/Right    Move\nW or Up    Jump\nSpace    Dash\nWASD / Arrows    Dash direction\nE    Interact",22,Ink);Anchors(keyboard.rectTransform,.055f,.23f,.54f,.77f);
             var gamepad=Text(controls,"GamepadControls","GAMEPAD\n\nLeft stick    Move and aim\nSouth button    Jump\nRight shoulder    Dash",22,Ink);Anchors(gamepad.rectTransform,.55f,.23f,.96f,.77f);
             view.backButton=InstanceButton(controls,"Back","BACK");var backRect=view.backButton.GetComponent<RectTransform>();Anchors(backRect,.055f,.05f,.37f,.18f);Link(view.backButton,view.backButton,view.backButton);
             var backHint=Text(controls,"BackHint","ESCAPE / GAMEPAD EAST (B): BACK",14,Teal);Anchors(backHint.rectTransform,.42f,.05f,.96f,.18f);

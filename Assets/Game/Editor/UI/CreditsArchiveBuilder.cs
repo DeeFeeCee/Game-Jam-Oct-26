@@ -48,7 +48,7 @@ namespace GameJam.UI.Editor
                 Section("PROJECT TEAM","WORKING ROSTER / NOT FINAL OR COMPLETE","Devin Padin / Jarheadd1\nDouglas (DeeFeeCee)\nSarah (AceofHome)\nAlexzander (mrdrworm)");
                 Section("GAME DEVELOPMENT","PROVISIONAL CONTRIBUTION RECORDS","<b>Devin Padin / Jarheadd1</b>\nGameplay and UI foundation development; technical integration.\n\n<b>Douglas (DeeFeeCee)</b>\nRepository coordination, integration and gameplay mechanics.");
                 Section("ART & ANIMATION","PROVISIONAL CONTRIBUTION RECORDS","<b>Sarah (AceofHome)</b>\nArtwork, animation and narrative collaboration.");
-                Section("LEVEL & PUZZLE DESIGN","PROVISIONAL CONTRIBUTION RECORDS","<b>Alexzander (mrdrworm)</b>\nLevel and puzzle design.");
+                Section("LEVEL & PUZZLE DESIGN","PROVISIONAL CONTRIBUTION RECORDS","<b>Alexzander (mrdrworm)</b>\nLevel, puzzle, and game design.");
                 Section("TOOLS & TECHNOLOGY","CONFIRMED PROJECT TOOLS","Unity 6000.3.26f1\nC#\nGit\nGitHub");
                 Section("AUDIO & MUSIC","CONFIRMED CONTRIBUTION","<b>Douglas (DeeFeeCee)</b>\nMusic & Sound FX");
                 Section("TYPOGRAPHY & FONT DESIGN","CONFIRMED CONTRIBUTION","<b>Douglas (DeeFeeCee)</b>\nOriginal Typeface: DeeFont1.17");
