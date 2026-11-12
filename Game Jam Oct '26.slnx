@@ -15,6 +15,7 @@
   <Project Path="GameJam.Credits.PlayModeTests.csproj" />
   <Project Path="GameJam.SingleScreen.csproj" />
   <Project Path="GameJam.Presentation.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="GameJam.SingleScreen.PlayModeTests.csproj" />
   <Project Path="GameJam.Levels.csproj" />
   <Project Path="GameJam.UI.PlayModeTests.csproj" />
