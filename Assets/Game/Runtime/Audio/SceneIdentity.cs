@@ -17,12 +17,14 @@ public class SceneIdentity : MonoBehaviour
     private static ZoneType previousZone;
     private static byte previousPhase;
     private static string previousSceneName;
+    private static AudioManager previousManager;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics()
     {
         hasPreviousMusicDestination = false;
         previousSceneName = null;
+        previousManager = null;
         SceneManager.sceneLoaded -= OnSceneLoaded;
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
@@ -48,7 +50,7 @@ public class SceneIdentity : MonoBehaviour
         // Scenes without an identity (e.g. test fixtures) do not alter music
         if (destination == null || AudioManager.Instance == null) return;
 
-        bool retry = hasPreviousMusicDestination &&
+        bool retry = hasPreviousMusicDestination && previousManager == AudioManager.Instance &&
             previousScene == destination.SceneId &&
             previousZone == destination.Zone &&
             previousPhase == destination.PhaseId &&
@@ -57,6 +59,7 @@ public class SceneIdentity : MonoBehaviour
         previousZone = destination.Zone;
         previousPhase = destination.PhaseId;
         previousSceneName = scene.name;
+        previousManager = AudioManager.Instance;
         hasPreviousMusicDestination = true;
 
         /* The prologue uses menu music: retain it when already active, & replace
