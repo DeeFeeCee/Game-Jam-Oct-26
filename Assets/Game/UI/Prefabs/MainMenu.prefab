@@ -2974,7 +2974,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: '<b>Douglas (DeeFeeCee)</b>
 
-    Music & Sound FX'
+    Music and AudioManager development'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 7f6324612245d0d46bbddb6053a4bcaf, type: 2}
   m_sharedMaterial: {fileID: 5010614337849436711, guid: 90ae140ae68789e428e1a399ee0c87e1, type: 2}
@@ -3994,7 +3994,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: '<b>Alexzander (mrdrworm)</b>
 
-    Level, puzzle, and game design.'
+    Level, puzzle, and game design'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 7f6324612245d0d46bbddb6053a4bcaf, type: 2}
   m_sharedMaterial: {fileID: 5010614337849436711, guid: 90ae140ae68789e428e1a399ee0c87e1, type: 2}
@@ -4408,13 +4408,13 @@ MonoBehaviour:
   m_text: '<b>Devin Padin / Jarheadd1</b>
 
     Gameplay and UI foundation development;
-    technical integration.
+    technical integration; sound effects
 
 
     <b>Douglas (DeeFeeCee)</b>
 
     Repository coordination,
-    integration and gameplay mechanics.'
+    integration and gameplay mechanics'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 7f6324612245d0d46bbddb6053a4bcaf, type: 2}
   m_sharedMaterial: {fileID: 5010614337849436711, guid: 90ae140ae68789e428e1a399ee0c87e1, type: 2}
@@ -6704,7 +6704,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: '<b>Sarah (AceofHome)</b>
 
-    Artwork, animation and narrative collaboration.'
+    Artwork, animation and narrative collaboration'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 7f6324612245d0d46bbddb6053a4bcaf, type: 2}
   m_sharedMaterial: {fileID: 5010614337849436711, guid: 90ae140ae68789e428e1a399ee0c87e1, type: 2}

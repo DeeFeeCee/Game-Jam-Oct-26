@@ -46,11 +46,11 @@ namespace GameJam.UI.Editor
                 var group=contentObject.GetComponent<UnityEngine.UI.VerticalLayoutGroup>();group.padding=new RectOffset(16,20,12,24);group.spacing=18;group.childControlWidth=group.childControlHeight=true;group.childForceExpandHeight=false;group.childForceExpandWidth=true;
                 contentObject.GetComponent<UnityEngine.UI.ContentSizeFitter>().verticalFit=UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;scroll.content=content;
                 Section("PROJECT TEAM","WORKING ROSTER / NOT FINAL OR COMPLETE","Devin Padin / Jarheadd1\nDouglas (DeeFeeCee)\nSarah (AceofHome)\nAlexzander (mrdrworm)");
-                Section("GAME DEVELOPMENT","PROVISIONAL CONTRIBUTION RECORDS","<b>Devin Padin / Jarheadd1</b>\nGameplay and UI foundation development; technical integration.\n\n<b>Douglas (DeeFeeCee)</b>\nRepository coordination, integration and gameplay mechanics.");
-                Section("ART & ANIMATION","PROVISIONAL CONTRIBUTION RECORDS","<b>Sarah (AceofHome)</b>\nArtwork, animation and narrative collaboration.");
-                Section("LEVEL & PUZZLE DESIGN","PROVISIONAL CONTRIBUTION RECORDS","<b>Alexzander (mrdrworm)</b>\nLevel, puzzle, and game design.");
+                Section("GAME DEVELOPMENT","PROVISIONAL CONTRIBUTION RECORDS","<b>Devin Padin / Jarheadd1</b>\nGameplay and UI foundation development; technical integration; sound effects\n\n<b>Douglas (DeeFeeCee)</b>\nRepository coordination, integration and gameplay mechanics");
+                Section("ART & ANIMATION","PROVISIONAL CONTRIBUTION RECORDS","<b>Sarah (AceofHome)</b>\nArtwork, animation and narrative collaboration");
+                Section("LEVEL & PUZZLE DESIGN","PROVISIONAL CONTRIBUTION RECORDS","<b>Alexzander (mrdrworm)</b>\nLevel, puzzle, and game design");
                 Section("TOOLS & TECHNOLOGY","CONFIRMED PROJECT TOOLS","Unity 6000.3.26f1\nC#\nGit\nGitHub");
-                Section("AUDIO & MUSIC","CONFIRMED CONTRIBUTION","<b>Douglas (DeeFeeCee)</b>\nMusic & Sound FX");
+                Section("AUDIO & MUSIC","CONFIRMED CONTRIBUTION","<b>Douglas (DeeFeeCee)</b>\nMusic and AudioManager development");
                 Section("TYPOGRAPHY & FONT DESIGN","CONFIRMED CONTRIBUTION","<b>Douglas (DeeFeeCee)</b>\nOriginal Typeface: DeeFont1.17");
                 Section("SPECIAL THANKS","PENDING CONFIRMATION","Acknowledgments will be added after team confirmation.");
                 var barRect=Panel(scrollObject.transform,"ArchiveScrollbar",new Color(.06f,.15f,.19f));Fit(barRect,.975f,0,1,1);barRect.GetComponent<UnityEngine.UI.Image>().raycastTarget=true;

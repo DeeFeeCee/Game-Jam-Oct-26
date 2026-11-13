@@ -118,7 +118,7 @@ namespace GameJam.UI.Tests
             var roster = credits.archive.content.Find("PROJECT TEAMBody").GetComponent<TMPro.TMP_Text>();
             var art = credits.archive.content.Find("ART & ANIMATIONBody").GetComponent<TMPro.TMP_Text>();
             CollectionAssert.Contains(roster.text.Split('\n'), "Sarah (AceofHome)");
-            Assert.AreEqual("<b>Sarah (AceofHome)</b>\nArtwork, animation and narrative collaboration.", art.text);
+            Assert.AreEqual("<b>Sarah (AceofHome)</b>\nArtwork, animation and narrative collaboration", art.text);
             art.ForceMeshUpdate();
             Assert.IsFalse(art.isTextOverflowing);
             yield return null;
@@ -130,9 +130,10 @@ namespace GameJam.UI.Tests
             view.OpenCredits();
             var content = credits.archive.content;
             var development = content.Find("GAME DEVELOPMENTBody").GetComponent<TMPro.TMP_Text>();
-            StringAssert.Contains("<b>Douglas (DeeFeeCee)</b>\nRepository coordination, integration and gameplay mechanics.", development.text);
+            StringAssert.StartsWith("<b>Devin Padin / Jarheadd1</b>\nGameplay and UI foundation development; technical integration; sound effects\n\n", development.text);
+            StringAssert.Contains("<b>Douglas (DeeFeeCee)</b>\nRepository coordination, integration and gameplay mechanics", development.text);
             var audio = content.Find("AUDIO & MUSICBody").GetComponent<TMPro.TMP_Text>();
-            Assert.AreEqual("<b>Douglas (DeeFeeCee)</b>\nMusic & Sound FX", audio.text);
+            Assert.AreEqual("<b>Douglas (DeeFeeCee)</b>\nMusic and AudioManager development", audio.text);
             Assert.AreEqual("CONFIRMED CONTRIBUTION", content.Find("AUDIO & MUSICRecord").GetComponent<TMPro.TMP_Text>().text);
             var typography = content.Find("TYPOGRAPHY & FONT DESIGNBody").GetComponent<TMPro.TMP_Text>();
             Assert.AreEqual("<b>Douglas (DeeFeeCee)</b>\nOriginal Typeface: DeeFont1.17", typography.text);
@@ -141,7 +142,7 @@ namespace GameJam.UI.Tests
             var viewport = credits.archive.viewport;
             float scrollable = content.rect.height - viewport.rect.height;
             Assert.Greater(scrollable, 0f);
-            foreach (var credit in new[] { audio, typography })
+            foreach (var credit in new[] { development, audio, typography })
             {
                 var center = credit.rectTransform.TransformPoint(credit.rectTransform.rect.center);
                 float offset = -content.InverseTransformPoint(center).y - viewport.rect.height / 2f;
