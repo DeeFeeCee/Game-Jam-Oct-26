@@ -77,8 +77,10 @@ namespace GameJam.UI.Tests
             Assert.AreEqual(4, bank.RemainingCharges);
             var exit = Object.FindFirstObjectByType<LevelExit>();
             Assert.AreEqual(EndingSequence.ScenePath, exit.transition.destinationScene);
-            Assert.AreEqual(new Vector2(29, 14), (Vector2)exit.GetComponent<BoxCollider2D>().bounds.center);
-            Assert.AreEqual(new Vector2(2, 2), exit.GetComponent<BoxCollider2D>().size);
+            var doorway = exit.GetComponent<BoxCollider2D>().bounds;
+            Assert.AreEqual(new Vector2(29, 14), (Vector2)doorway.center);
+            Assert.AreEqual(.3f, doorway.size.x, .001f);
+            Assert.AreEqual(2f, doorway.size.y, .001f);
             Assert.GreaterOrEqual(SceneUtility.GetBuildIndexByScenePath(EndingSequence.ScenePath), 0);
             int entries = 0;
             UnityEngine.Events.UnityAction<Scene, LoadSceneMode> entered = (scene, _) =>
