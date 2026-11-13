@@ -15,7 +15,7 @@ public class AudioManager : MonoBehaviour
     private SceneIdentity.ZoneType activeLevelZone;
     private byte activeLevelPhase;
     private const float MusicLoadTimeoutSeconds = 10f;
-    private const float MusicTransitionSeconds = 0.571429f; // Half note
+    private const float MusicTransitionSeconds = 0.571429f; // Quarter note
     private const float PauseMusicTransitionSeconds = 0.071429f; // 32nd note
     private const float EmergeJingleDurationSeconds = 4.571429f; // 8 Quarters
 
