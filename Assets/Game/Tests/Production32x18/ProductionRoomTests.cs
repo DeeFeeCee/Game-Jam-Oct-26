@@ -27,6 +27,7 @@ namespace GameJam.LevelAuthoring.Tests
         private const string Level05 = "Assets/Game/Scenes/Levels/Level05.unity";
         private const string Level11 = "Assets/Game/Scenes/Levels/Level11.unity";
         private const string Level12 = "Assets/Game/Scenes/Levels/Level12.unity";
+        private static readonly int[] DoorCheckRooms = { 1, 5, 9, 12 };
 
         private static readonly (string Source, string Destination, EnvironmentZone Zone)[] CampaignRoute =
         {
@@ -43,6 +44,36 @@ namespace GameJam.LevelAuthoring.Tests
             ("Level11", "Level12", EnvironmentZone.Orange),
             ("Level12", "EndingSequence", EnvironmentZone.Orange)
         };
+
+        [UnityTest]
+        public IEnumerator ProductionDoorAcceptsThePlayerInsideTheDoorway([ValueSource(nameof(DoorCheckRooms))] int room)
+        {
+            yield return Load($"Assets/Game/Scenes/Levels/Level{room:00}.unity");
+            var exit = Object.FindFirstObjectByType<LevelExit>();
+            var trigger = exit.GetComponent<BoxCollider2D>();
+            var door = exit.transform.Find("Environment exit art").GetComponent<SpriteRenderer>();
+            var body = actor.GetComponent<Rigidbody2D>();
+            var bank = RunDashBank.Instance;
+            int balance = bank.RemainingCharges;
+            string destination = exit.transition.destinationScene;
+            float halfPlayerWidth = actor.GetComponent<Collider2D>().bounds.extents.x;
+            Assert.That(trigger.bounds.size.x, Is.EqualTo(.3f).Within(.01f));
+            Assert.That(trigger.bounds.center.x, Is.EqualTo(door.bounds.center.x).Within(.01f));
+
+            body.gravityScale = 0;
+            body.position = (Vector2)trigger.bounds.center - Vector2.right * (halfPlayerWidth + .36f);
+            body.linearVelocity = Vector2.zero;
+            Physics2D.SyncTransforms();
+            yield return new WaitForFixedUpdate();
+            yield return new WaitForFixedUpdate();
+            Assert.IsFalse(exit.transition.TransitionStarted, "Entering the approach area must leave Jett playable.");
+            Assert.IsTrue(actor.isActiveAndEnabled && body.simulated);
+
+            actor.SetHorizontalInput(1f);
+            yield return AwaitScene(destination);
+            Assert.AreSame(bank, RunDashBank.Instance);
+            Assert.AreEqual(balance, bank.RemainingCharges);
+        }
 
         [UnityTest]
         public IEnumerator RegisteredCampaignExitsKeepOneBankAndRecordEveryEntry()
@@ -79,8 +110,9 @@ namespace GameJam.LevelAuthoring.Tests
                 var exit = Object.FindObjectsByType<LevelExit>(FindObjectsSortMode.None).Single();
                 Assert.IsNotNull(exit.transition);
                 Assert.AreEqual(destination, exit.transition.destinationScene);
-                var trigger = exit.GetComponent<Collider2D>();
+                var trigger = exit.GetComponent<BoxCollider2D>();
                 Assert.IsTrue(trigger.isTrigger);
+                Assert.That(trigger.bounds.size.x, Is.EqualTo(.3f).Within(.01f), step.Source);
 
                 var body = setup.Player.GetComponent<Rigidbody2D>();
                 body.linearVelocity = Vector2.zero;
