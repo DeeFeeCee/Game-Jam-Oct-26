@@ -1180,13 +1180,13 @@ MonoBehaviour:
     <b>Devin Padin / Jarheadd1</b>
 
     Gameplay
-    and UI foundation development; technical integration.
+    and UI foundation development; technical integration; sound effects
 
 
     <b>Douglas (DeeFeeCee)</b>
 
     Repository
-    coordination, integration and gameplay mechanics.
+    coordination, integration and gameplay mechanics
 
 
 
@@ -1196,7 +1196,7 @@ MonoBehaviour:
     <b>Sarah
     (AceofHome)</b>
 
-    Artwork, animation and narrative collaboration.
+    Artwork, animation and narrative collaboration
 
 
 
@@ -1206,7 +1206,7 @@ MonoBehaviour:
 
     <b>Alexzander (mrdrworm)</b>
 
-    Level, puzzle, and game design.
+    Level, puzzle, and game design
 
 
 
@@ -1215,8 +1215,7 @@ MonoBehaviour:
 
     <b>Douglas (DeeFeeCee)</b>
 
-    Music
-    & Sound FX
+    Music and AudioManager development
 
 
 

@@ -45,7 +45,8 @@ namespace GameJam.BlueIntegration.Tests
                     Assert.AreEqual(room == 12 ? Ending : $"{Prefix}{room + 1:00}.unity", exit.transition.destinationScene);
                     bool yellow = room >= 5 && room <= 8;
                     var door = exit.transform.Find(ProductionEnvironmentAuthoring.ExitName);
-                    Assert.AreEqual(Art + (yellow ? "YGExit.png" : "BlueExit.png"), AssetDatabase.GetAssetPath(door.GetComponent<SpriteRenderer>().sprite));
+                    Assert.AreEqual(Art + (room == 12 ? "FinalExit.png" : yellow ? "YGExit.png" : "BlueExit.png"),
+                        AssetDatabase.GetAssetPath(door.GetComponent<SpriteRenderer>().sprite));
                     var setup = All<LevelSetup>(scene).Single();
                     var entrance = setup.spawn.Find(ProductionEnvironmentAuthoring.EntranceName);
                     Assert.AreEqual(Art + (yellow ? "YGEnter.png" : "BlueEnter.png"), AssetDatabase.GetAssetPath(entrance.GetComponent<SpriteRenderer>().sprite));
@@ -67,6 +68,7 @@ namespace GameJam.BlueIntegration.Tests
             }
         }
 
+        [TestCase(9)]
         [TestCase(10)]
         [TestCase(11)]
         [TestCase(12)]
@@ -79,10 +81,7 @@ namespace GameJam.BlueIntegration.Tests
                     .Concat(All<Turret2D>(scene)).ToDictionary(component => component, component => EditorJsonUtility.ToJson(component));
                 var exits = All<LevelExit>(scene).ToArray();
                 var artObjects = All<Transform>(scene).Count();
-                var warning = $"Level{room:00}: {ProductionEnvironmentAuthoring.OrangePending}. Temporary Blue kit retained.";
-                LogAssert.Expect(LogType.Warning, warning);
                 ProductionEnvironmentAuthoring.Apply(scene);
-                LogAssert.Expect(LogType.Warning, warning);
                 ProductionEnvironmentAuthoring.Apply(scene);
                 Assert.AreEqual(artObjects, All<Transform>(scene).Count());
                 CollectionAssert.AreEquivalent(originals.Keys, All<Collider2D>(scene));
@@ -130,11 +129,12 @@ namespace GameJam.BlueIntegration.Tests
                     bool yellow = room >= 5 && room <= 8;
                     var surfaces = All<SpriteRenderer>(scene).Where(renderer =>
                         renderer.name == ProductionEnvironmentAuthoring.SurfaceName && renderer.enabled).ToArray();
-                    if (room != 9) Assert.IsNotEmpty(surfaces, scene.name);
+                    Assert.IsNotEmpty(surfaces, scene.name);
                     foreach (var surface in surfaces)
                     {
                         string source = AssetDatabase.GetAssetPath(surface.sprite.texture);
-                        Assert.IsTrue(yellow ? source == Art + "YGPlatforms.png" || source == Art + "YGLvlGround.png" :
+                        Assert.IsTrue(room >= 9 ? source == Art + "OrangePlatforms.png" || source == Art + "Orangefloor.png" :
+                            yellow ? source == Art + "YGPlatforms.png" || source == Art + "YGLvlGround.png" :
                             source == Art + "BluePlatforms.png", surface.transform.parent.name);
                         Assert.IsEmpty(surface.GetComponentsInChildren<Collider2D>(true));
                     }
@@ -185,18 +185,25 @@ namespace GameJam.BlueIntegration.Tests
                 Assert.IsTrue(terminal.enabled);
                 Assert.AreEqual(1, shape.GetComponentsInChildren<Animator>(true).Length);
                 Assert.AreEqual(1, terminal.GetComponents<SpriteRenderer>().Length);
-                Assert.AreEqual(1, terminal.GetComponents<TerminalBlinkIndicator>().Length);
-                var accent = terminal.transform.Find("Blink status accent").GetComponent<SpriteRenderer>();
-                Assert.IsFalse(accent.enabled);
-                Assert.AreEqual(terminal.GetComponent<SpriteRenderer>().sortingOrder + 1, accent.sortingOrder);
+                bool orange = room == 11;
+                var accent = terminal.transform.Find("Blink status accent")?.GetComponent<SpriteRenderer>();
+                Assert.AreEqual(orange ? 0 : 1, terminal.GetComponents<TerminalBlinkIndicator>().Length);
+                if (orange) Assert.IsNull(accent);
+                else
+                {
+                    Assert.IsNotNull(accent);
+                    Assert.IsFalse(accent.enabled);
+                    Assert.AreEqual(terminal.GetComponent<SpriteRenderer>().sortingOrder + 1, accent.sortingOrder);
+                }
                 Assert.IsEmpty(terminal.GetComponentsInChildren<Collider2D>(true));
                 Assert.IsEmpty(shape.GetComponentsInChildren<ResearchTerminal>(true));
                 Assert.IsFalse(shape.transform.Find("Floor visuals").GetComponent<SpriteRenderer>().enabled);
                 Assert.IsTrue(shape.transform.Find("Gameplay surface frame").GetComponentsInChildren<SpriteRenderer>(true)
                     .All(renderer => !renderer.enabled));
-                Assert.AreEqual(Art + (yellow ? "YGTerminal.png" : "BlueTerminal.png"),
+                Assert.AreEqual(Art + (orange ? "OrangeTerminal.png" : yellow ? "YGTerminal.png" : "BlueTerminal.png"),
                     AssetDatabase.GetAssetPath(terminal.GetComponent<SpriteRenderer>().sprite));
-                Assert.AreEqual(Art + (yellow ? "YGAnims/YGTerminal.controller" : "BlueAnims/TerminalBlink.controller"),
+                Assert.AreEqual(Art + (orange ? "OrangeAnims/OrangeTerminal.controller" :
+                    yellow ? "YGAnims/YGTerminal.controller" : "BlueAnims/TerminalBlink.controller"),
                     AssetDatabase.GetAssetPath(terminal.runtimeAnimatorController));
                 var supportName = room switch
                 {
@@ -223,16 +230,19 @@ namespace GameJam.BlueIntegration.Tests
                 var controller = (UnityEditor.Animations.AnimatorController)terminal.runtimeAnimatorController;
                 Assert.AreEqual(clip, controller.layers.Single().stateMachine.defaultState.motion);
                 var frames = AnimationUtility.GetObjectReferenceCurve(clip, binding).Select(key => (Sprite)key.value).Distinct().ToArray();
-                Assert.GreaterOrEqual(frames.Length, 2);
+                Assert.AreEqual(orange ? 6 : 2, frames.Length);
                 foreach (var frame in frames)
                     Assert.AreEqual(top.bounds.max.y, ProductionEnvironmentAuthoring.VisibleTerminalBase(renderer, frame), .001f);
                 var position = renderer.transform.position;
                 var originalCollider = EditorJsonUtility.ToJson(shape);
                 var supportCollider = EditorJsonUtility.ToJson(support);
                 for (int i = 0; i < 2; i++)
-                    ProductionEnvironmentAuthoring.ApplyDecorativeTerminal(shape, yellow, All<BoxCollider2D>(scene));
-                Assert.AreEqual(accent, terminal.transform.Find("Blink status accent").GetComponent<SpriteRenderer>());
-                Assert.AreEqual(1, terminal.GetComponents<TerminalBlinkIndicator>().Length);
+                {
+                    if (orange) ProductionEnvironmentAuthoring.Apply(scene);
+                    else ProductionEnvironmentAuthoring.ApplyDecorativeTerminal(shape, yellow, All<BoxCollider2D>(scene));
+                }
+                Assert.AreEqual(accent, terminal.transform.Find("Blink status accent")?.GetComponent<SpriteRenderer>());
+                Assert.AreEqual(orange ? 0 : 1, terminal.GetComponents<TerminalBlinkIndicator>().Length);
                 Assert.Less(Vector3.Distance(position, renderer.transform.position), .001f);
                 Assert.AreEqual(originalCollider, EditorJsonUtility.ToJson(shape));
                 Assert.AreEqual(supportCollider, EditorJsonUtility.ToJson(support));
@@ -293,13 +303,17 @@ namespace GameJam.BlueIntegration.Tests
             Assert.AreEqual(expected, theme.Zone, scene.name);
             var blue = theme.GetComponent<SpriteRenderer>();
             Assert.AreEqual(ProductionEnvironmentAuthoring.BlueBackgroundPath, AssetDatabase.GetAssetPath(blue.sprite));
-            Assert.AreEqual(expected == EnvironmentZone.Orange, theme.UsesTemporaryBlueBackground);
-            Assert.IsNull(theme.OrangeBackground, "No Orange source was supplied for this candidate.");
+            bool orange = expected == EnvironmentZone.Orange;
+            Assert.IsFalse(theme.UsesTemporaryBlueBackground);
+            if (orange)
+                Assert.AreEqual(ProductionEnvironmentAuthoring.OrangeBackgroundPath, AssetDatabase.GetAssetPath(theme.OrangeBackground));
+            else Assert.IsNull(theme.OrangeBackground);
             bool yellow = expected == EnvironmentZone.YellowGreen;
-            Assert.AreEqual(!yellow, blue.enabled, scene.name);
+            Assert.AreEqual(!yellow && !orange, blue.enabled, scene.name);
             var tiles = All<SpriteRenderer>(scene).Where(renderer => renderer.enabled && renderer.gameObject.activeInHierarchy &&
-                AssetDatabase.GetAssetPath(renderer.sprite) == ProductionEnvironmentAuthoring.YellowBackgroundPath).ToArray();
-            Assert.AreEqual(yellow ? 15 : 0, tiles.Length);
+                AssetDatabase.GetAssetPath(renderer.sprite) == (orange ? ProductionEnvironmentAuthoring.OrangeBackgroundPath :
+                    ProductionEnvironmentAuthoring.YellowBackgroundPath)).ToArray();
+            Assert.AreEqual(yellow || orange ? 15 : 0, tiles.Length);
             foreach (var tile in tiles)
             {
                 Assert.LessOrEqual(tile.sortingOrder, -20);

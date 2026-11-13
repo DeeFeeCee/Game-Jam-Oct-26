@@ -112,11 +112,13 @@ namespace GameJam.BlueIntegration.Tests
             yield return LoadRoom(room);
             var animator = TerminalArt();
             var art = animator.GetComponent<SpriteRenderer>();
-            var accent = art.transform.Find("Blink status accent").GetComponent<SpriteRenderer>();
+            var accent = art.transform.Find("Blink status accent")?.GetComponent<SpriteRenderer>();
             var position = art.transform.position;
             var scale = art.transform.lossyScale;
             var support = Support(animator);
             bool yellow = room is >= 5 and <= 8;
+            bool orange = room == 11;
+            var orangeFrames = new System.Collections.Generic.HashSet<string>();
             var normal = yellow ? "YGTerminal_0" : "BlueTerminal_Norm";
             var blink = yellow ? "YGTerminal_1" : "BlueTerminal_Blink";
             Assert.AreEqual(1, art.GetComponents<SpriteRenderer>().Length);
@@ -129,17 +131,32 @@ namespace GameJam.BlueIntegration.Tests
             {
                 yield return null;
                 Assert.IsNotNull(art.sprite);
-                Assert.IsTrue(art.sprite.name == normal || art.sprite.name == blink);
-                Assert.AreEqual(art.sprite.name == blink, accent.enabled);
+                if (orange)
+                {
+                    Assert.IsNull(accent);
+                    StringAssert.StartsWith("OrangeTerminal_", art.sprite.name);
+                    orangeFrames.Add(art.sprite.name);
+                }
+                else
+                {
+                    Assert.IsTrue(art.sprite.name == normal || art.sprite.name == blink);
+                    Assert.AreEqual(art.sprite.name == blink, accent.enabled);
+                }
                 Assert.AreEqual(position, art.transform.position);
                 Assert.AreEqual(scale, art.transform.lossyScale);
-                float baseY = art.transform.TransformPoint(0f, -art.sprite.pivot.y / art.sprite.pixelsPerUnit, 0f).y;
-                Assert.AreEqual(support.bounds.max.y, baseY, .001f);
+                // The Editor suite checks visible alpha bounds for every Orange frame.
+                if (!orange)
+                {
+                    float baseY = art.transform.TransformPoint(0f, -art.sprite.pivot.y / art.sprite.pixelsPerUnit, 0f).y;
+                    Assert.AreEqual(support.bounds.max.y, baseY, .001f);
+                }
                 if (previous != null && previous != art.sprite.name) changes++;
                 previous = art.sprite.name;
-                if (changes >= 4 && animator.GetCurrentAnimatorStateInfo(0).normalizedTime > firstCycle + 1f) break;
+                if (changes >= 4 && (!orange || orangeFrames.Count == 6) &&
+                    animator.GetCurrentAnimatorStateInfo(0).normalizedTime > firstCycle + 1f) break;
             }
             Assert.GreaterOrEqual(changes, 4, "Both visible frames advance across repeated cycles");
+            if (orange) Assert.AreEqual(6, orangeFrames.Count);
             Assert.Greater(animator.GetCurrentAnimatorStateInfo(0).normalizedTime, firstCycle + 1f);
         }
 

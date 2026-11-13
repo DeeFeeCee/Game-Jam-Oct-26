@@ -181,12 +181,14 @@ namespace GameJam.UI.Tests
         [UnityTest]
         public IEnumerator CinematicRollFullyDisplaysDeesConfirmedAudioAndTypefaceCredits()
         {
-            const string audio = "<b>AUDIO & MUSIC</b>\n\n<b>Douglas (DeeFeeCee)</b>\nMusic & Sound FX";
+            const string development = "<b>GAME DEVELOPMENT</b>\n\n<b>Devin Padin / Jarheadd1</b>\nGameplay and UI foundation development; technical integration; sound effects";
+            const string audio = "<b>AUDIO & MUSIC</b>\n\n<b>Douglas (DeeFeeCee)</b>\nMusic and AudioManager development";
             const string typography = "<b>TYPOGRAPHY & FONT DESIGN</b>\n\n<b>Douglas (DeeFeeCee)</b>\nOriginal Typeface: DeeFont1.17";
             yield return LoadEnding();
             var credits = Field<TMP_Text>("credits");
             var viewport = Field<RectTransform>("creditsViewport");
-            StringAssert.Contains("<b>Douglas (DeeFeeCee)</b>\nRepository coordination, integration and gameplay mechanics.", credits.text);
+            StringAssert.Contains(development, credits.text);
+            StringAssert.Contains("<b>Douglas (DeeFeeCee)</b>\nRepository coordination, integration and gameplay mechanics", credits.text);
             StringAssert.Contains(audio, credits.text);
             Assert.IsTrue(credits.text.EndsWith(typography, StringComparison.Ordinal));
 
@@ -194,7 +196,7 @@ namespace GameJam.UI.Tests
             credits.ForceMeshUpdate();
             Assert.IsFalse(credits.isTextOverflowing);
             Assert.LessOrEqual(credits.textBounds.size.x, credits.rectTransform.rect.width);
-            foreach (string section in new[] { audio, typography })
+            foreach (string section in new[] { development, audio, typography })
             {
                 int start = credits.text.IndexOf(section, StringComparison.Ordinal);
                 var characters = credits.textInfo.characterInfo.Take(credits.textInfo.characterCount)
@@ -218,7 +220,7 @@ namespace GameJam.UI.Tests
             yield return Until(() => ending.CurrentStage == EndingSequence.Stage.Credits, "Cinematic credits are active");
             var credits = Field<TMP_Text>("credits");
             Assert.IsTrue(credits.gameObject.activeInHierarchy);
-            StringAssert.Contains("<b>Sarah (AceofHome)</b>\nArtwork, animation and narrative collaboration.", credits.text);
+            StringAssert.Contains("<b>Sarah (AceofHome)</b>\nArtwork, animation and narrative collaboration", credits.text);
         }
 
         [UnityTest] public IEnumerator EndingRunsAtZeroTimeScaleWithoutGameplayOrBankOwners()

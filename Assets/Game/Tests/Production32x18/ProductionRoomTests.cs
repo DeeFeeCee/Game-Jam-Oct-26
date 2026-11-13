@@ -264,13 +264,20 @@ namespace GameJam.LevelAuthoring.Tests
         [UnityTest]
         public IEnumerator Level12SpawnsSafelyAndAuthoredCrusherAndTurretActivate()
         {
-            yield return Load(Level12);
+            float activated = 0;
+            void RecordActivation(Scene scene, LoadSceneMode mode)
+            {
+                if (scene.path == Level12) activated = Time.fixedTime;
+            }
+            SceneManager.sceneLoaded += RecordActivation;
+            try { yield return Load(Level12); }
+            finally { SceneManager.sceneLoaded -= RecordActivation; }
             var bank = RunDashBank.Instance;
             var turret = Object.FindObjectsByType<Turret2D>(FindObjectsSortMode.None).Single();
             Assert.IsTrue(turret.aimAtPlayer);
             Assert.AreEqual(2f, turret.initialDelay);
             Assert.AreEqual(.4f, turret.shotInterval);
-            Assert.AreEqual(10f, turret.projectileSpeed);
+            Assert.AreEqual(11f, turret.projectileSpeed);
             Assert.AreEqual(8f, turret.projectilePrefab.lifetime);
             Assert.AreEqual(2, Object.FindObjectsByType<MovingPlatform2D>(FindObjectsSortMode.None).Length);
             var zone = Object.FindObjectsByType<CrusherActivationZone2D>(FindObjectsSortMode.None).Single();
@@ -278,7 +285,11 @@ namespace GameJam.LevelAuthoring.Tests
             Assert.IsNotNull(crusher);
             Assert.AreEqual(CrusherState.Armed, crusher.State);
             yield return LandAt(1f, "Level12 spawn floor");
-            yield return new WaitUntil(() => turret.ShotsFired >= 1, System.TimeSpan.FromSeconds(4), () => Assert.Fail("Level12 turret did not fire."));
+            float tolerance = 2 * Time.fixedDeltaTime;
+            while (turret.ShotsFired < 1 && Time.fixedTime - activated < 2f + tolerance)
+                yield return new WaitForFixedUpdate();
+            Assert.AreEqual(1, turret.ShotsFired);
+            Assert.AreEqual(2f, Time.fixedTime - activated, tolerance);
             Assert.IsFalse(bank.IsGameOver);
             Assert.AreEqual(5, bank.RemainingCharges);
 

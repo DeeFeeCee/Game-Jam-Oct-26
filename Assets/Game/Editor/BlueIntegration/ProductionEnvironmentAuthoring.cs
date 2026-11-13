@@ -26,11 +26,12 @@ namespace GameJam.BlueIntegration.Editor
         public const string TurretName = "Environment turret art";
         public const string BlueBackgroundPath = "Assets/Art/BlueBG.png";
         public const string YellowBackgroundPath = "Assets/Art/Levels/YGbgNew.png";
-        public const string OrangePending = "ORANGE ZONE ASSIGNED — SOURCE ART PENDING";
+        public const string OrangeBackgroundPath = "Assets/Art/Levels/Orangebg.png";
         private const string Art = "Assets/Art/Levels/";
         private const string Grid = "Assets/Game/Prefabs/GridPlatform32x18.prefab";
         private const string TerminalPlaceholder = "Assets/Game/Prefabs/Terminal placeholder.prefab";
         private const string YellowAdapters = "Assets/Game/Art/YellowGreenPlatformAdapters";
+        private const string OrangeAdapters = "Assets/Game/Art/OrangePlatformAdapters";
         private const string Unlit = "Assets/Game/Tests/Fixtures/Movement/Art/PlaceholderUnlit.mat";
         private const int BackgroundOrder = -20;
 
@@ -69,10 +70,21 @@ namespace GameJam.BlueIntegration.Editor
                 fields.FindProperty("zone").enumValueIndex = (int)assignment.Value;
                 fields.ApplyModifiedPropertiesWithoutUndo();
             }
-            bool yellowGreen = theme.Zone == EnvironmentZone.YellowGreen;
             if (theme.UsesTemporaryBlueBackground)
-                Debug.LogWarning($"{scene.name}: {OrangePending}. Temporary Blue kit retained.", theme);
+            {
+                var fields = new SerializedObject(theme);
+                fields.FindProperty("orangeBackground").objectReferenceValue = Sprite("Orangebg", "Orangebg_0");
+                fields.ApplyModifiedPropertiesWithoutUndo();
+            }
             ApplyBackground(background, theme);
+            if (theme.Zone == EnvironmentZone.Orange)
+            {
+                ApplyOrangePresentation(roots, exits[0], trigger);
+                EditorSceneManager.MarkSceneDirty(scene);
+                return;
+            }
+
+            bool yellowGreen = theme.Zone == EnvironmentZone.YellowGreen;
             var placeholders = new List<BoxCollider2D>();
             foreach (var root in roots)
             {
@@ -100,7 +112,64 @@ namespace GameJam.BlueIntegration.Editor
             EditorSceneManager.MarkSceneDirty(scene);
         }
 
-        private static void ApplyGrid(BoxCollider2D box, bool yellowGreen)
+        private static void ApplyOrangePresentation(GameObject[] roots, LevelExit exit, BoxCollider2D trigger)
+        {
+            foreach (var root in roots)
+            {
+                foreach (var box in root.GetComponentsInChildren<BoxCollider2D>())
+                {
+                    if (box.isTrigger) continue;
+                    var prefab = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(box.gameObject);
+                    if (prefab == TerminalPlaceholder)
+                        ApplyOrangeTerminal(box);
+                    else if (box.TryGetComponent<MovingPlatform2D>(out var moving))
+                        ApplySurface(box, moving.surface, EnvironmentZone.Orange, ground: false);
+                    else if (prefab == Grid || box.transform.Find(BluePlatformAuthoring.ArtName) != null)
+                        ApplyGrid(box, EnvironmentZone.Orange);
+                }
+            }
+
+            // The finale loads its destination immediately. Keep the source door closed in the room.
+            if (exit.transition.destinationScene == EndingSequence.ScenePath)
+            {
+                var door = Visual(exit.transform, ExitName, Material());
+                var sprite = Sprite("FinalExit", "FinalExit_0");
+                Vector3 bottom = trigger.offset - Vector2.up * (trigger.size.y / 2f);
+                float localUnit = 1f / Mathf.Abs(exit.transform.lossyScale.y);
+                Paint(door, sprite, bottom + Vector3.up * (sprite.pivot.y / 20f * localUnit), -1);
+            }
+        }
+
+        private static void ApplyOrangeTerminal(BoxCollider2D box)
+        {
+            // This decorative fixture already has a noninteractive, aligned visual and no active solid.
+            var art = box.transform.Find(TerminalName)?.GetComponent<SpriteRenderer>();
+            if (art == null || box.enabled)
+                throw new InvalidOperationException($"Expected an authored decorative terminal on {box.name}.");
+
+            var sprite = Sprite("OrangeTerminal", "OrangeTerminal_0");
+            var baseY = VisibleTerminalBase(art, art.sprite);
+            var animator = art.GetComponent<Animator>();
+            animator.runtimeAnimatorController =
+                AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(Art + "OrangeAnims/OrangeTerminal.controller");
+            // Swapping the controller can restore the prior binding's default SpriteRenderer value.
+            // Write the scene's idle frame after the swap.
+            if (art.sprite != sprite)
+            {
+                Paint(art, sprite, art.transform.localPosition, art.sortingOrder);
+                art.transform.position += Vector3.up * (baseY - VisibleTerminalBase(art, sprite));
+            }
+            // The six-frame spark clip has its own highlights. Remove the old Blue accent.
+            if (art.TryGetComponent<TerminalBlinkIndicator>(out var indicator))
+                Object.DestroyImmediate(indicator);
+            var accent = art.transform.Find("Blink status accent");
+            if (accent != null) Object.DestroyImmediate(accent.gameObject);
+        }
+
+        private static void ApplyGrid(BoxCollider2D box, bool yellowGreen) =>
+            ApplyGrid(box, yellowGreen ? EnvironmentZone.YellowGreen : EnvironmentZone.Blue);
+
+        private static void ApplyGrid(BoxCollider2D box, EnvironmentZone zone)
         {
             var floor = box.transform.Find("Floor visuals")?.GetComponent<SpriteRenderer>();
             if (floor == null) throw new InvalidOperationException("Grid platform is missing its floor renderer.");
@@ -110,26 +179,39 @@ namespace GameJam.BlueIntegration.Editor
             var verificationArt = box.transform.Find(BluePlatformAuthoring.ArtName)?.GetComponent<SpriteRenderer>();
             if (verificationArt != null) verificationArt.enabled = false;
             SetLegacyFrame(box.transform, keepTop: true);
-            if (ground && !yellowGreen)
+            if (ground && zone == EnvironmentZone.Blue)
             {
                 floor.enabled = true; // Already authored using Ace's 20-PPU Blue ground tile.
                 var prior = box.transform.Find(SurfaceName)?.GetComponent<SpriteRenderer>();
                 if (prior != null) prior.enabled = false;
                 return;
             }
-            ApplySurface(box, floor, yellowGreen, ground);
+            ApplySurface(box, floor, zone, ground);
         }
 
-        private static void ApplySurface(BoxCollider2D box, SpriteRenderer original, bool yellowGreen, bool ground)
+        private static void ApplySurface(BoxCollider2D box, SpriteRenderer original, bool yellowGreen, bool ground) =>
+            ApplySurface(box, original, yellowGreen ? EnvironmentZone.YellowGreen : EnvironmentZone.Blue, ground);
+
+        private static void ApplySurface(BoxCollider2D box, SpriteRenderer original, EnvironmentZone zone, bool ground)
         {
             if (original == null || Mathf.Approximately(box.transform.lossyScale.x, 0) || Mathf.Approximately(box.transform.lossyScale.y, 0))
                 throw new InvalidOperationException("Expected a nonzero platform scale and its existing renderer.");
             bool small = box.bounds.size.x < 1.5f;
-            Sprite sprite = ground ? Sprite("YGLvlGround") : yellowGreen
-                ? Sprite("YGPlatforms", small ? "YGPlatforms_Small" : "YGPlatforms_Large")
-                : Sprite("BluePlatforms", small ? "BluePlatforms_Small" : "BluePlatform_Big");
+            Sprite sprite = zone switch
+            {
+                EnvironmentZone.Orange => ground ? Sprite("Orangefloor", "Orangefloor_0") :
+                    Sprite("OrangePlatforms", small ? "OrangePlatforms_3" : "OrangePlatforms_0"),
+                EnvironmentZone.YellowGreen => ground ? Sprite("YGLvlGround") :
+                    Sprite("YGPlatforms", small ? "YGPlatforms_Small" : "YGPlatforms_Large"),
+                _ => Sprite("BluePlatforms", small ? "BluePlatforms_Small" : "BluePlatform_Big")
+            };
             var art = Visual(box.transform, SurfaceName, original.sharedMaterial);
-            art.sprite = yellowGreen ? BluePlatformAuthoring.TilingSprite(sprite, YellowAdapters) : BluePlatformAuthoring.TilingSprite(sprite);
+            art.sprite = zone switch
+            {
+                EnvironmentZone.Orange => BluePlatformAuthoring.TilingSprite(sprite, OrangeAdapters),
+                EnvironmentZone.YellowGreen => BluePlatformAuthoring.TilingSprite(sprite, YellowAdapters),
+                _ => BluePlatformAuthoring.TilingSprite(sprite)
+            };
             art.sortingLayerID = original.sortingLayerID;
             art.sortingOrder = original.sortingOrder;
             art.drawMode = SpriteDrawMode.Tiled;
@@ -149,7 +231,7 @@ namespace GameJam.BlueIntegration.Editor
             SetBackgroundActive(background.transform, yellowName, yellow);
             SetBackgroundActive(background.transform, orangeName, orange);
             if (yellow) TileBackground(background, yellowName, Sprite("YGbgNew"), new Color(.72f, .72f, .72f));
-            if (orange) TileBackground(background, orangeName, theme.OrangeBackground, Color.white);
+            if (orange) TileBackground(background, orangeName, theme.OrangeBackground, new Color(.52f, .52f, .52f));
         }
 
         private static void SetBackgroundActive(Transform parent, string name, bool active)
