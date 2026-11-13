@@ -9,11 +9,12 @@ public class AudioManager : MonoBehaviour
 
     private Coroutine musicTransition;
     private bool hasActiveLevelMusic;
-    private bool menuMusicTransitionPending;
+    private SceneIdentity.SceneType? pendingMusicScene;
     private bool pauseMenuOpen;
     private bool isPauseMusicActive;
     private SceneIdentity.ZoneType activeLevelZone;
     private byte activeLevelPhase;
+    private const float MusicLoadTimeoutSeconds = 10f;
     private const float MusicTransitionSeconds = 1.142857f; // Half note
     private const float PauseMusicTransitionSeconds = 0.071429f; // 32nd note
     private const float EmergeJingleDurationSeconds = 4.571429f;
@@ -147,10 +148,11 @@ public class AudioManager : MonoBehaviour
         while that exact track is already playing (including menu -> prologue) */
         if (scene == SceneIdentity.SceneType.MainMenu &&
             PrimaryMusicSource != null && PrimaryMusicSource.clip == MainMenu
-            && PrimaryMusicSource.isPlaying)
+            && PrimaryMusicSource.isPlaying && !pendingMusicScene.HasValue)
             return;
 
-        if (scene == SceneIdentity.SceneType.Level && hasActiveLevelMusic && activeLevelZone == zone)
+        if (scene == SceneIdentity.SceneType.Level && !pendingMusicScene.HasValue &&
+            hasActiveLevelMusic && activeLevelZone == zone)
         {
             if (activeLevelPhase == phase) return;
             StartMusicTransition(CrossfadeLevelPhase(activeLevelPhase, phase, MusicTransitionSeconds));
@@ -158,21 +160,39 @@ public class AudioManager : MonoBehaviour
             return;
         }
 
-        StartMusicTransition(PlaySceneMusicAfterFadeRoutine(scene, zone, phase));
+        StartMusicTransition(PlaySceneMusicAfterFadeRoutine(scene, zone, phase), scene);
     }
 
-    private void StartMusicTransition(IEnumerator transition)
+    private void StartMusicTransition(IEnumerator transition, SceneIdentity.SceneType? destination = null)
     {
-        menuMusicTransitionPending = false;
+        // The manager owns the child fade coroutines as well as the transition.
+        // Cancel both when a newer scene or pause request supersedes the old one.
         if (musicTransition != null)
-            StopCoroutine(musicTransition);
+            StopAllCoroutines();
+        pendingMusicScene = destination;
         musicTransition = StartCoroutine(transition);
     }
 
     private IEnumerator PlaySceneMusicAfterFadeRoutine(SceneIdentity.SceneType scene,
     SceneIdentity.ZoneType zone, byte phase)
     {
+        AudioClip[] clips = GetDestinationClips(scene, zone);
+        yield return PrepareMusic(clips);
+        pendingMusicScene = null;
+        foreach (AudioClip clip in clips)
+        {
+            if (clip == null || clip.loadState != AudioDataLoadState.Loaded)
+            {
+                Debug.LogError($"Could not load music for {scene}: {clip?.name ?? "missing clip"}.", this);
+                yield break;
+            }
+        }
+
+        // Keep the outgoing music playing while the new destination prepares.
+        // A fast pause/resume can update its intent without canceling this fade.
+        pendingMusicScene = scene;
         yield return FadeOutAllMusic(MusicTransitionSeconds);
+        pendingMusicScene = null;
 
         switch (scene)
         {
@@ -181,7 +201,7 @@ public class AudioManager : MonoBehaviour
                 PlayMainMenuMusic();
                 break;
             case SceneIdentity.SceneType.Ending:
-                PlayEndingMusic();
+                yield return PlayEndingMusicSequence();
                 break;
             case SceneIdentity.SceneType.Level:
                 switch (zone)
@@ -201,7 +221,7 @@ public class AudioManager : MonoBehaviour
                 if (pauseMenuOpen)
                 {
                     isPauseMusicActive = true;
-                    StartMusicTransition(CrossfadePauseMusic(true));
+                    yield return CrossfadePauseMusic(true);
                 }
                 break;
             default:
@@ -228,7 +248,6 @@ public class AudioManager : MonoBehaviour
 
     public void PlayMainMenuMusic()
     {
-        menuMusicTransitionPending = false;
         pauseMenuOpen = false;
         isPauseMusicActive = false;
         hasActiveLevelMusic = false;
@@ -239,39 +258,46 @@ public class AudioManager : MonoBehaviour
 
     public void EnsurePrologueMusic()
     {
-        if (menuMusicTransitionPending)
-            return;
-
-        if (PrimaryMusicSource != null && PrimaryMusicSource.clip == MainMenu &&
-            PrimaryMusicSource.isPlaying && PrimaryMusicSource.volume > 0f)
-        {
-            hasActiveLevelMusic = false;
-            return;
-        }
-
-        bool anyMusicPlaying =
-            (PrimaryMusicSource != null && PrimaryMusicSource.isPlaying) ||
-            (Phase1Source != null && Phase1Source.isPlaying) ||
-            (Phase2Source != null && Phase2Source.isPlaying) ||
-            (Phase3Source != null && Phase3Source.isPlaying) ||
-            (Phase4Source != null && Phase4Source.isPlaying);
-
-        if (!anyMusicPlaying)
-        {
-            PlayMainMenuMusic();
-            return;
-        }
-
-        menuMusicTransitionPending = true;
-        if (musicTransition != null)
-            StopCoroutine(musicTransition);
-        musicTransition = StartCoroutine(PlayMenuMusicAfterFade());
+        if (pendingMusicScene == SceneIdentity.SceneType.MainMenu) return;
+        PlaySceneMusicAfterFade(SceneIdentity.SceneType.MainMenu, default, 0);
     }
 
-    private IEnumerator PlayMenuMusicAfterFade()
+    private AudioClip[] GetDestinationClips(SceneIdentity.SceneType scene, SceneIdentity.ZoneType zone)
     {
-        yield return FadeOutAllMusic(MusicTransitionSeconds);
-        PlayMainMenuMusic();
+        if (scene == SceneIdentity.SceneType.MainMenu)
+            return new[] { MainMenu };
+        if (scene == SceneIdentity.SceneType.Ending)
+            return new[] { EmergeJingle, Emergence };
+
+        return zone switch
+        {
+            SceneIdentity.ZoneType.Aquamarine => new[] {
+                AquamarinePause, AquamarinePhase1, AquamarinePhase2, AquamarinePhase3, AquamarinePhase4 },
+            SceneIdentity.ZoneType.Emerald => new[] {
+                EmeraldPause, EmeraldPhase1, EmeraldPhase2, EmeraldPhase3, EmeraldPhase4 },
+            SceneIdentity.ZoneType.Heliodor => new[] {
+                HeliodorPause, HeliodorPhase1, HeliodorPhase2, HeliodorPhase3, HeliodorPhase4 },
+            _ => System.Array.Empty<AudioClip>()
+        };
+    }
+
+    private static IEnumerator PrepareMusic(AudioClip[] clips)
+    {
+        foreach (AudioClip clip in clips)
+        {
+            if (clip != null && clip.loadInBackground && clip.loadState == AudioDataLoadState.Unloaded)
+                clip.LoadAudioData();
+        }
+
+        double deadline = Time.realtimeSinceStartupAsDouble + MusicLoadTimeoutSeconds;
+        while (Time.realtimeSinceStartupAsDouble < deadline)
+        {
+            bool loading = false;
+            foreach (AudioClip clip in clips)
+                loading |= clip != null && clip.loadState == AudioDataLoadState.Loading;
+            if (!loading) yield break;
+            yield return null;
+        }
     }
 
     public void StartZone1Music() => StartZoneMusic(AquamarinePause,
@@ -321,7 +347,7 @@ public class AudioManager : MonoBehaviour
     private void OnPauseStateChanged(bool paused)
     {
         pauseMenuOpen = paused;
-        if (!hasActiveLevelMusic || isPauseMusicActive == paused) return;
+        if (pendingMusicScene.HasValue || !hasActiveLevelMusic || isPauseMusicActive == paused) return;
 
         isPauseMusicActive = paused;
         StartMusicTransition(CrossfadePauseMusic(paused));
@@ -416,20 +442,18 @@ public class AudioManager : MonoBehaviour
             if (source != null) source.Stop();
     }
 
-    public void PlayEndingMusic()
+    public void PlayEndingMusic() =>
+        PlaySceneMusicAfterFade(SceneIdentity.SceneType.Ending, default, 0);
+
+    private IEnumerator PlayEndingMusicSequence()
     {
         pauseMenuOpen = false;
         isPauseMusicActive = false;
         hasActiveLevelMusic = false;
         StopLevelMusic();
-        if (PrimaryMusicSource == null || EmergeJingle == null) return;
+        if (PrimaryMusicSource == null || EmergeJingle == null) yield break;
 
         PrimaryMusicSource.loop = false;
-        musicTransition = StartCoroutine(PlayEndingMusicSequence());
-    }
-
-    private IEnumerator PlayEndingMusicSequence()
-    {
         StartSound(PrimaryMusicSource, EmergeJingle, 1f);
         yield return new WaitForSecondsRealtime(EmergeJingleDurationSeconds);
 
