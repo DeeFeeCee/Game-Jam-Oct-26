@@ -1173,59 +1173,78 @@ MonoBehaviour:
       m_Calls: []
   m_text: 'P.I.D.R.
 
+    
 
     <b>GAME DEVELOPMENT</b>
 
+    
 
-    <b>Devin Padin / Jarheadd1</b>
+    <b>Devin Padin
+    (Jarheadd1)</b>
 
-    Gameplay
-    and UI foundation development; technical integration; sound effects
+    Gameplay and UI foundation development, technical integration,
+    and sound effects
 
+    
 
     <b>Douglas (DeeFeeCee)</b>
 
-    Repository
-    coordination, integration and gameplay mechanics
+    Repository coordination,
+    integration, and gameplay mechanics
 
+    
 
+    
 
     <b>ART & ANIMATION</b>
 
+    
 
     <b>Sarah
     (AceofHome)</b>
 
-    Artwork, animation and narrative collaboration
+    Artwork, animation, and narrative collaboration
 
+    
 
+    
 
     <b>LEVEL
     & PUZZLE DESIGN</b>
 
+    
 
     <b>Alexzander (mrdrworm)</b>
 
-    Level, puzzle, and game design
+    Level, puzzle,
+    and game design
 
+    
 
+    
 
     <b>AUDIO & MUSIC</b>
 
+    
 
-    <b>Douglas (DeeFeeCee)</b>
+    <b>Douglas
+    (DeeFeeCee)</b>
 
     Music and AudioManager development
 
+    
 
+    
 
-    <b>TYPOGRAPHY & FONT DESIGN</b>
+    <b>TYPOGRAPHY
+    & FONT DESIGN</b>
 
+    
 
     <b>Douglas (DeeFeeCee)</b>
 
-    Original
-    Typeface: DeeFont1.17'
+    Original Typeface:
+    DeeFont 1.17'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

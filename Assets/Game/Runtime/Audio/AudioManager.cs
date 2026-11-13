@@ -15,9 +15,9 @@ public class AudioManager : MonoBehaviour
     private SceneIdentity.ZoneType activeLevelZone;
     private byte activeLevelPhase;
     private const float MusicLoadTimeoutSeconds = 10f;
-    private const float MusicTransitionSeconds = 1.142857f; // Half note
+    private const float MusicTransitionSeconds = 0.571429f; // Half note
     private const float PauseMusicTransitionSeconds = 0.071429f; // 32nd note
-    private const float EmergeJingleDurationSeconds = 4.571429f;
+    private const float EmergeJingleDurationSeconds = 4.571429f; // 8 Quarters
 
     [Header("----- Audio Mixer -----")]
     [SerializeField] private AudioMixer AudioMixer;
@@ -253,7 +253,7 @@ public class AudioManager : MonoBehaviour
         hasActiveLevelMusic = false;
         if (PrimaryMusicSource != null) PrimaryMusicSource.loop = true;
         StopLevelMusic();
-        StartSound(PrimaryMusicSource, MainMenu, MusicTransitionSeconds);
+        StartSound(PrimaryMusicSource, MainMenu, 1f);
     }
 
     public void EnsurePrologueMusic()
